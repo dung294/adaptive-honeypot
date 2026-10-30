@@ -144,6 +144,14 @@ class VirtualFileSystem:
                         ".bash_history": {
                             "type": "file", "owner": self.user, "perm": "600",
                             "content": "ls -la\nwhoami\n"
+                        },
+                        "notes.txt": {
+                            "type": "file", "owner": self.user, "perm": "644",
+                            "content": "TODO:\n1. Update database credentials in /var/www/.env\n2. Backup server configuration to 192.168.101.50\n"
+                        },
+                        "backup.sh": {
+                            "type": "file", "owner": self.user, "perm": "755",
+                            "content": "#!/bin/bash\necho 'Backing up web server...'\ntar -czf /tmp/backup.tar.gz /var/www/html\n"
                         }
                     }
                 }
