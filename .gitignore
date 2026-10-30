@@ -19,6 +19,10 @@ server.key
 # File tạo log tấn công mô phỏng (Lab / CTI Generator) - Giữ local, không push
 attack_lab_generator.py
 
+# Tài liệu PDF & Script sinh báo cáo
+*.pdf
+build_hardcore_pdf.py
+
 # Mẫu mã độc thu thập (Quarantine)
 quarantine/*
 !quarantine/.gitkeep
