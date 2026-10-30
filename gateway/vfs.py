@@ -228,18 +228,31 @@ class VirtualFileSystem:
         if not names and "l" not in flags:
             return True, ""
 
+        if "a" in flags:
+            all_names = [".", ".."] + names
+        else:
+            all_names = names
+
         if "l" in flags:
-            lines = [f"total {len(names) * 4}"]
+            entries = []
+            if "a" in flags:
+                dir_owner = node.get("owner", "root")
+                entries.append(("d", "rwxr-xr-x", dir_owner, 4096, "."))
+                entries.append(("d", "rwxr-xr-x", "root", 4096, ".."))
             for name in names:
                 item = children[name]
                 is_dir = "d" if item["type"] == "dir" else "-"
-                perm = item.get("perm", "644")
                 owner = item.get("owner", "root")
                 size = len(item.get("content", "")) if item["type"] == "file" else 4096
-                lines.append(f"{is_dir}rwxr-xr-x 1 {owner} {owner} {size:>5} Oct 30 12:00 {name}")
+                entries.append((is_dir, "rwxr-xr-x", owner, size, name))
+
+            total_blocks = len(entries) * 4
+            lines = [f"total {total_blocks}"]
+            for is_dir, perm, owner, size, name in entries:
+                lines.append(f"{is_dir}{perm} 1 {owner} {owner} {size:>5} Oct 30 12:00 {name}")
             return True, "\n".join(lines)
-        
-        return True, "  ".join(names)
+
+        return True, "  ".join(all_names)
 
     def cat(self, path: str) -> Tuple[bool, str]:
         target = self.resolve_path(path)
