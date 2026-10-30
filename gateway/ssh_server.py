@@ -7,8 +7,7 @@ from gateway.terminal_session import TerminalSession
 from threat_intel.logger import HoneypotLogger
 from config import (
     SSH_HOST, SSH_PORT, SSH_BANNER, SERVER_KEY_PATH,
-    ADMIN_ENABLED, ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_ALLOWED_IPS,
-    HONEYPOT_ALLOWED_PASSWORDS, HONEYPOT_ALLOWED_USERS, HONEYPOT_STRICT_AUTH
+    HONEYPOT_ALLOWED_PASSWORDS, HONEYPOT_ALLOWED_USERS
 )
 
 class HoneypotSSHInterface(paramiko.ServerInterface):
@@ -17,7 +16,6 @@ class HoneypotSSHInterface(paramiko.ServerInterface):
         self.client_port = client_port
         self.logger = logger
         self.username = "root"
-        self.is_admin = False
         self.event = threading.Event()
 
     def check_channel_request(self, kind, chanid):
@@ -28,50 +26,22 @@ class HoneypotSSHInterface(paramiko.ServerInterface):
     def check_auth_password(self, username, password):
         self.username = username
         
-        # 1. Kiểm tra xác thực Quản trị viên (Admin Remote Control điều khiển máy thật)
-        if ADMIN_ENABLED and username == ADMIN_USERNAME:
-            ip_allowed = (
-                "*" in ADMIN_ALLOWED_IPS or
-                self.client_ip in ADMIN_ALLOWED_IPS or
-                self.client_ip in ("127.0.0.1", "::1", "localhost")
-            )
-            if ip_allowed and password == ADMIN_PASSWORD:
-                self.is_admin = True
-                print(f"[👑] [ADMIN AUTH] IP: {self.client_ip}:{self.client_port} | User: '{username}' -> ĐĂNG NHẬP ADMIN THÀNH CÔNG (HOST CONTROL)")
-                if self.logger:
-                    self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=True, is_admin=True)
-                return paramiko.AUTH_SUCCESSFUL
-            else:
-                print(f"[!] [ADMIN AUTH FAILED] IP: {self.client_ip}:{self.client_port} | User: '{username}' -> Sai pass admin hoặc IP bị chặn.")
-                if self.logger:
-                    self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=False, is_admin=True)
-                return paramiko.AUTH_FAILED
-
-        # 2. Nếu ở chế độ Strict Auth: Khóa toàn bộ tài khoản khác
-        if HONEYPOT_STRICT_AUTH:
-            print(f"[-] [AUTH REJECTED] IP: {self.client_ip}:{self.client_port} | User: '{username}' (Strict Auth bật)")
-            if self.logger:
-                self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=False, is_admin=False)
-            return paramiko.AUTH_FAILED
-
-        # 3. Xác thực Bẫy Honeypot (KHÔNG PHẢI PASS NÀO CŨNG VÀO ĐƯỢC)
         user_ok = ("*" in HONEYPOT_ALLOWED_USERS) or (username in HONEYPOT_ALLOWED_USERS)
         pass_ok = password in HONEYPOT_ALLOWED_PASSWORDS
 
         if user_ok and pass_ok:
-            self.is_admin = False
-            print(f"[+] [HONEYPOT TRAP GRANTED] IP: {self.client_ip}:{self.client_port} | User: '{username}' | Pass: '{password}' -> ĐÚNG PASS BẪY, ĐƯA VÀO VFS+LLM")
+            print(f"[+] [AUTH SUCCESS] IP: {self.client_ip}:{self.client_port} | User: '{username}' | Pass: '{password}' -> CẤP QUYỀN VÀO BẪY ẢO")
             if self.logger:
-                self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=True, is_admin=False)
+                self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=True)
             return paramiko.AUTH_SUCCESSFUL
         else:
-            print(f"[-] [HONEYPOT AUTH FAILED] IP: {self.client_ip}:{self.client_port} | User: '{username}' | Pass: '{password}' -> TỪ CHỐI (SAI PASS/USER)")
+            print(f"[-] [AUTH FAILED] IP: {self.client_ip}:{self.client_port} | User: '{username}' | Pass: '{password}' -> TỪ CHỐI (BRUTE FORCE T1110)")
             if self.logger:
-                self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=False, is_admin=False)
+                self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=False)
             return paramiko.AUTH_FAILED
 
     def check_auth_none(self, username):
-        # Tuyệt đối không cho phép đăng nhập nếu không cung cấp password
+        # Chặn hoàn toàn đăng nhập không mật khẩu
         return paramiko.AUTH_FAILED
 
     def check_channel_pty_request(self, channel, term, width, height, pixelwidth, pixelheight, modes):
@@ -112,27 +82,23 @@ class SSHGatewayServer:
             
             channel = transport.accept(20)
             if channel is None:
-                print(f"[-] [TIMEOUT / REJECTED] {client_ip} không được cấp channel hoặc xác thực thất bại.")
                 return
 
             server_interface.event.wait(10)
             if not server_interface.event.is_set():
-                print(f"[-] [TIMEOUT] {client_ip} không yêu cầu shell.")
                 return
 
-            # Bắt đầu phiên Terminal (Chế độ Honeypot hoặc Admin Console)
+            # Bắt đầu phiên Terminal Honeypot
             session = TerminalSession(
                 channel=channel,
                 client_ip=client_ip,
                 client_port=client_port,
                 username=server_interface.username,
-                logger=self.logger,
-                is_admin=server_interface.is_admin
+                logger=self.logger
             )
             session.run()
 
-        except Exception as e:
-            # print(f"[-] Lỗi phiên: {e}")
+        except Exception:
             pass
         finally:
             if transport:
@@ -147,16 +113,11 @@ class SSHGatewayServer:
         sock.listen(100)
         
         print("=" * 70)
-        print("🚀 [NEXT-GEN ADAPTIVE HONEYPOT & REMOTE CONTROL GATEWAY]")
+        print("🚀 [NEXT-GEN ADAPTIVE HONEYPOT GATEWAY] ĐANG HOẠT ĐỘNG...")
         print(f"🌐 Lắng nghe tại: {self.host}:{self.port}")
-        print(f"🛡️  Hybrid Deception: Stateful VFS + LLM + Anti-Jailbreak")
-        print(f"🔐 Mật khẩu bẫy Honeypot chấp nhận: {len(HONEYPOT_ALLOWED_PASSWORDS)} mật khẩu mẫu trong cấu hình")
-        if ADMIN_ENABLED:
-            allowed_str = "*" if "*" in ADMIN_ALLOWED_IPS else ", ".join(ADMIN_ALLOWED_IPS)
-            print(f"👑 Admin Remote Shell: BẬT | User: '{ADMIN_USERNAME}' | IP Allowed: {allowed_str}")
-        else:
-            print("👑 Admin Remote Shell: TẮT")
-        print(f"📊 File nhật ký sự kiện: {self.logger.log_path}")
+        print(f"🛡️  Kiến trúc Deception: Stateful VFS + LLM + Fast-Path + Tab Completion")
+        print(f"🔐 Mật khẩu bẫy chấp nhận: {len(HONEYPOT_ALLOWED_PASSWORDS)} mẫu mật khẩu trong cấu hình")
+        print(f"📊 Nhật ký sự kiện lưu tại: {self.logger.log_path}")
         print("=" * 70)
 
         try:

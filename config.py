@@ -11,7 +11,6 @@ if ENV_PATH.exists():
         from dotenv import load_dotenv
         load_dotenv(dotenv_path=ENV_PATH)
     except Exception:
-        # Fallback đọc file .env thủ công khi chưa cài thư viện dotenv
         try:
             with open(ENV_PATH, "r", encoding="utf-8") as f:
                 for line in f:
@@ -31,52 +30,38 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 QUARANTINE_DIR = BASE_DIR / "quarantine"
 QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
 
-# Cấu hình SSH Gateway
+# Cấu hình SSH Gateway Honeypot
 SSH_HOST = os.getenv("SSH_HOST", "0.0.0.0")
 SSH_PORT = int(os.getenv("SSH_PORT", "2222"))
 SSH_BANNER = os.getenv("SSH_BANNER", "SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.6")
 SERVER_KEY_PATH = BASE_DIR / "server.key"
 
-# Cấu hình Quản trị viên (Admin Remote Control từ máy Windows vào điều khiển máy thật)
-ADMIN_ENABLED = os.getenv("ADMIN_ENABLED", "true").lower() in ("true", "1", "yes")
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
-
-# Danh sách IP được phép làm admin: '*' cho phép tất cả, hoặc danh sách IP (ví dụ: '192.168.1.5, 10.0.0.2')
-ADMIN_ALLOWED_IPS = [ip.strip() for ip in os.getenv("ADMIN_ALLOWED_IPS", "*").split(",") if ip.strip()]
-
-# Cấu hình Mật khẩu cho Bẫy ảo Honeypot (KHÔNG PHẢI PASS NÀO CŨNG VÀO ĐƯỢC)
-# Chỉ những mật khẩu nằm trong danh sách này mới được cấp quyền truy cập vào bẫy ảo
-# Hacker nhập sai pass sẽ bị từ chối (Permission denied) và hệ thống ghi nhận log dò pass (Brute Force T1110)
+# Cấu hình Xác thực Bẫy Honeypot
+# Chỉ các mật khẩu nằm trong danh sách này mới được mở cửa vào môi trường bẫy ảo
+# Hacker nhập sai pass sẽ bị từ chối (Permission denied) và hệ thống tự động ghi log dò pass (MITRE T1110)
 HONEYPOT_ALLOWED_PASSWORDS = [
     p.strip() for p in os.getenv(
         "HONEYPOT_ALLOWED_PASSWORDS",
-        "123456,root,password,admin,ubuntu,toor,supersecretpassword123"
+        "123,123456,root,password,admin,ubuntu,toor,supersecretpassword123"
     ).split(",") if p.strip()
 ]
 
-# Danh sách username được phép vào honeypot ('*' = bất kỳ username nào)
+# Danh sách username được phép ('*' = cho phép bất kỳ username nào đoán trúng pass)
 HONEYPOT_ALLOWED_USERS = [
     u.strip() for u in os.getenv("HONEYPOT_ALLOWED_USERS", "*").split(",") if u.strip()
 ]
 
-# Chế độ Strict Auth:
-# - False: Cho phép hacker thử dò pass Honeypot (đúng pass honeypot thì vào bẫy ảo)
-# - True: Khóa hoàn toàn, chỉ Admin mới được kết nối
-HONEYPOT_STRICT_AUTH = os.getenv("HONEYPOT_STRICT_AUTH", "false").lower() in ("true", "1", "yes")
-
-# Cấu hình Persona Hệ thống ảo (Dành cho Hacker bị lừa vào bẫy)
+# Cấu hình Persona Hệ thống ảo
 HOSTNAME = os.getenv("HOSTNAME", "ubuntu-srv-01")
 DEFAULT_USER = os.getenv("DEFAULT_USER", "root")
-PROMPT_TEMPLATE = "{user}@{hostname}:{cwd}# "
 
 # Cấu hình AI / LLM Engine đa nền tảng
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "custom").lower()
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://hhtechapi.net/v1")
 OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434/api/generate")
-LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5-coder:7b")
-LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "5.0"))
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.8-flash")
+LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "8.0"))
 
-# Đường dẫn lưu log sự kiện (JSON Lines)
+# Đường dẫn lưu log sự kiện CTI (JSON Lines)
 EVENT_LOG_FILE = LOGS_DIR / "events.jsonl"
