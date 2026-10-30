@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Cài đặt môi trường ảo
+venv/
+.venv/
+env/
+
+# Khóa riêng tư bảo mật SSH (Không bao giờ đẩy lên public repo!)
+*.key
+server.key
+*.pem
+
+# Mẫu mã độc thu thập (Quarantine)
+quarantine/*
+!quarantine/.gitkeep
+
+# Nhật ký sự kiện thời gian thực
+logs/*.jsonl
+!logs/.gitkeep
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
