@@ -262,27 +262,27 @@ class TerminalSession:
         """Thực thi lệnh Admin: hỗ trợ cả lệnh quản trị nội bộ lẫn lệnh Host OS thật."""
         tokens = cmd.split()
         base_cmd = tokens[0].lower()
+        norm_cmd = base_cmd.lstrip(":")
 
         # Thoát
-        if base_cmd in (":exit", "exit", "quit", ":q"):
+        if norm_cmd in ("exit", "quit", "q"):
             return "", True
 
         # Trợ giúp
-        if base_cmd in (":help", ":h", "?"):
+        if norm_cmd in ("help", "h", "?"):
             help_text = (
-                "DANH SÁCH LỆNH QUẢN TRỊ ADMIN:\r\n"
-                "  :help            - Hiển thị menu trợ giúp này\r\n"
-                "  :status          - Xem cấu hình hệ thống, AI model, số lượng sự kiện\r\n"
-                "  :logs [n]        - Xem n sự kiện tấn công mới nhất (mặc định: 10)\r\n"
-                "  :quarantine      - Xem các file mẫu mã độc bị cô lập\r\n"
-                "  :exit            - Thoát phiên điều khiển\r\n"
+                "DANH SÁCH LỆNH QUẢN TRỊ ADMIN (Gõ có hoặc không có dấu : đều được):\r\n"
+                "  logs [n]         - Xem n sự kiện tấn công / đăng nhập mới nhất (vd: logs 10)\r\n"
+                "  status           - Xem cấu hình hệ thống, AI model, số lượng sự kiện\r\n"
+                "  quarantine       - Xem các file mẫu mã độc hacker tải lên\r\n"
                 "  cd <thư mục>     - Chuyển thư mục làm việc trên máy chủ\r\n"
-                "  <lệnh bất kỳ>    - Chạy trực tiếp trên Terminal thật của máy chủ (vd: dir, ipconfig, ls, ps...)\r\n"
+                "  exit             - Thoát phiên điều khiển\r\n"
+                "  <lệnh bất kỳ>    - Chạy trực tiếp trên Terminal thật của máy chủ (ls, ps, docker, top...)\r\n"
             )
             return help_text, False
 
         # Trạng thái hệ thống
-        if base_cmd == ":status":
+        if norm_cmd in ("status", "stat", "info"):
             num_logs = 0
             if EVENT_LOG_FILE.exists():
                 try:
@@ -306,7 +306,7 @@ class TerminalSession:
             return status_text, False
 
         # Xem log tấn công gần nhất
-        if base_cmd == ":logs":
+        if norm_cmd in ("logs", "log"):
             n = 10
             if len(tokens) > 1 and tokens[1].isdigit():
                 n = int(tokens[1])
@@ -329,10 +329,18 @@ class TerminalSession:
                         ts = ev.get("timestamp", "")[:19]
                         ip = ev.get("source_ip", "")
                         user = ev.get("username", "")
-                        cmd_txt = ev.get("command", "")
-                        h_type = ev.get("handler_type", "")
-                        mitre = ", ".join(ev.get("mitre_matches", [])) or "None"
-                        out_lines.append(f"[{ts}] {ip} ({user}) -> `{cmd_txt}` [{h_type}] MITRE: {mitre}")
+                        status = ev.get("event_status", "")
+                        if "Auth" in status:
+                            pwd = ev.get("password", "")
+                            success = ev.get("auth_success", False)
+                            tag = "AUTH_OK" if success else "AUTH_FAIL"
+                            mitre = ", ".join([m.get("technique_id", "") for m in ev.get("mitre_techniques", [])]) or "None"
+                            out_lines.append(f"[{ts}] {ip} | [{tag}] User: '{user}' Pass: '{pwd}' | MITRE: {mitre}")
+                        else:
+                            cmd_txt = ev.get("command", "")
+                            h_type = ev.get("handler_type", "VFS")
+                            mitre = ", ".join([m.get("technique_id", "") if isinstance(m, dict) else str(m) for m in ev.get("mitre_techniques", [])]) or "None"
+                            out_lines.append(f"[{ts}] {ip} ({user}) -> `{cmd_txt}` [{h_type}] | MITRE: {mitre}")
                     except Exception:
                         out_lines.append(raw.strip())
                 return "\r\n".join(out_lines), False
@@ -340,7 +348,7 @@ class TerminalSession:
                 return f"Lỗi đọc log: {e}", False
 
         # Xem thư mục cách ly
-        if base_cmd == ":quarantine":
+        if norm_cmd in ("quarantine", "samples"):
             if not QUARANTINE_DIR.exists():
                 return "Thư mục cách ly chưa tồn tại.", False
             files = list(QUARANTINE_DIR.glob("*"))
