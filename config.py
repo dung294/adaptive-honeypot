@@ -19,10 +19,23 @@ HOSTNAME = "ubuntu-srv-01"
 DEFAULT_USER = "root"
 PROMPT_TEMPLATE = "{user}@{hostname}:{cwd}# "
 
-# Cấu hình AI / LLM Engine
+# Cấu hình AI / LLM Engine đa nền tảng
+# Các provider hỗ trợ:
+# - "ollama" (Local Ollama: qwen2.5-coder, mistral, llama3...)
+# - "openai" (OpenAI: gpt-4o-mini, gpt-4o...)
+# - "groq" (Groq Cloud siêu tốc: llama-3.3-70b-versatile, llama-3.1-8b-instant...)
+# - "deepseek" (DeepSeek: deepseek-chat)
+# - "gemini" (Google Gemini: gemini-1.5-flash, gemini-2.0-flash...)
+# - "anthropic" (Claude: claude-3-5-haiku-20241022, claude-3-5-sonnet-20241022...)
+# - "openrouter" (OpenRouter: bất kỳ model nào)
+# - "custom" (OpenAI-compatible server: vLLM, LM Studio, LocalAI...)
+# - "heuristic" (Chế độ mô phỏng offline, 0% AI, không tốn tài nguyên)
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()
+LLM_API_KEY = os.getenv("LLM_API_KEY", "")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "")
 OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434/api/generate")
 LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5-coder:7b")
-LLM_TIMEOUT_SECONDS = 5.0
+LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "5.0"))
 
 # Đường dẫn lưu log sự kiện (JSON Lines)
 EVENT_LOG_FILE = LOGS_DIR / "events.jsonl"

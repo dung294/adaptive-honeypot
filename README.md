@@ -36,7 +36,29 @@ adaptive-honeypot/
 pip install -r requirements.txt
 ```
 
-### Bước 2: Khởi động Honeypot Gateway
+### Bước 2: Cấu hình LLM Engine (Linh hoạt đa nền tảng)
+Hệ thống không bị gò bó bởi Ollama mà hỗ trợ nhiều nhà cung cấp AI khác nhau thông qua biến môi trường:
+- **Local:** `ollama`, `heuristic` (chạy offline 0% AI, không tốn tài nguyên), `custom` (vLLM, LM Studio)
+- **Cloud APIs (Khuyên dùng):** `groq` (siêu tốc <300ms), `deepseek`, `openai`, `gemini`, `anthropic`, `openrouter`
+
+Sao chép file mẫu:
+```bash
+cp .env.example .env
+```
+Ví dụ cấu hình dùng **Groq** (miễn phí, tốc độ cao nhất):
+```env
+LLM_PROVIDER=groq
+LLM_API_KEY=gsk_your_api_key_here
+LLM_MODEL=llama-3.3-70b-versatile
+```
+Hoặc dùng **OpenAI / DeepSeek / Gemini**:
+```env
+LLM_PROVIDER=openai
+LLM_API_KEY=sk-...
+LLM_MODEL=gpt-4o-mini
+```
+
+### Bước 3: Khởi động Honeypot Gateway
 ```bash
 python main.py
 ```
