@@ -8,6 +8,9 @@ venv/
 .venv/
 env/
 
+# Môi trường cấu hình bảo mật
+.env
+
 # Khóa riêng tư bảo mật SSH (Không bao giờ đẩy lên public repo!)
 *.key
 server.key

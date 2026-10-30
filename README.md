@@ -91,7 +91,42 @@ Hoặc chạy kịch bản kiểm thử tự động:
 python test_honeypot.py
 ```
 
-### Bước 4: Xem dữ liệu Log JSON
+### Bước 4: Điều khiển máy chủ từ xa từ máy Windows (Admin Remote Control)
+Bạn có thể cấu hình tài khoản Quản trị viên trong file `.env`:
+```env
+SSH_HOST=0.0.0.0
+SSH_PORT=2222
+ADMIN_ENABLED=true
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your_secure_password
+ADMIN_ALLOWED_IPS=*
+```
+
+Từ máy Windows, bạn có 3 cách kết nối điều khiển:
+1. **Dùng lệnh SSH trực tiếp (PowerShell / CMD):**
+   ```bash
+   ssh admin@<IP_MÁY_CHỦ> -p 2222
+   ```
+   *(Nhập mật khẩu `ADMIN_PASSWORD` bạn đã đặt).*
+
+2. **Dùng file click nhanh:**
+   - Double-click file `connect_win.bat` trên Windows, nhập IP và mật khẩu để kết nối ngay.
+
+3. **Dùng script Python Admin Client:**
+   ```bash
+   python admin_client.py --host <IP_MÁY_CHỦ> --port 2222 --user admin
+   ```
+
+Khi đăng nhập thành công với quyền Admin, bạn có toàn quyền:
+- Chạy bất kỳ lệnh thực tế nào trên Host OS (cmd, powershell, bash, docker, v.v.).
+- `:status`: Xem tài nguyên máy chủ, cấu hình AI, số sự kiện tấn công đã bắt được.
+- `:logs 20`: Xem 20 nhật ký tấn công mới nhất.
+- `:quarantine`: Xem các tệp mã độc hacker tải lên máy.
+- `:exit`: Thoát phiên điều khiển.
+
+*(Lưu ý: Hacker đăng nhập bằng bất kỳ tài khoản nào khác sẽ tự động bị giam giữ trong Honeypot ảo VFS + LLM và không thể tác động tới máy thật).*
+
+### Bước 5: Xem dữ liệu Log JSON
 Xem file `logs/events.jsonl` để kiểm tra các bản ghi sự kiện có đầy đủ thông tin:
 - `session_id`, `source_ip`
 - `command`, `command_output`
