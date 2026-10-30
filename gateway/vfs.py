@@ -128,7 +128,36 @@ class VirtualFileSystem:
             }
         }
 
+        # Đảm bảo thư mục home của user đăng nhập luôn tồn tại (vd: /home/dung, /home/ubuntu)
+        if self.user != "root":
+            home_children = self.fs["/"]["children"]["home"]["children"]
+            if self.user not in home_children:
+                home_children[self.user] = {
+                    "type": "dir",
+                    "owner": self.user,
+                    "perm": "755",
+                    "children": {
+                        ".bashrc": {
+                            "type": "file", "owner": self.user, "perm": "644",
+                            "content": "# ~/.bashrc\nexport PATH=$PATH:/usr/local/bin\n"
+                        },
+                        ".bash_history": {
+                            "type": "file", "owner": self.user, "perm": "600",
+                            "content": "ls -la\nwhoami\n"
+                        }
+                    }
+                }
+
     def resolve_path(self, path: str) -> str:
+        """Chuẩn hóa đường dẫn tương đối / tuyệt đối và hỗ trợ ký tự ~."""
+        if not path:
+            return self.cwd
+
+        user_home = "/root" if self.user == "root" else f"/home/{self.user}"
+        if path == "~":
+            path = user_home
+        elif path.startswith("~/"):
+            path = user_home + path[1:]
         """Chuẩn hóa đường dẫn tương đối / tuyệt đối."""
         if not path:
             return self.cwd
@@ -177,7 +206,7 @@ class VirtualFileSystem:
         target = self.resolve_path(path) if path else self.cwd
         node = self._get_node(target)
         if not node:
-            return False, f"ls: cannot access '{path}': No such file or directory"
+            return False, f"ls: cannot access '{path or self.cwd}': No such file or directory"
         
         if node["type"] == "file":
             return True, target.split("/")[-1]
@@ -187,6 +216,9 @@ class VirtualFileSystem:
         
         if "a" not in flags:
             names = [n for n in names if not n.startswith(".")]
+
+        if not names and "l" not in flags:
+            return True, ""
 
         if "l" in flags:
             lines = [f"total {len(names) * 4}"]

@@ -29,7 +29,7 @@ class LLMClient:
     Client gọi LLM đa nền tảng linh hoạt (Multi-Provider LLM Client).
     Hỗ trợ:
       - Local: Ollama, vLLM, LM Studio, Heuristic Fallback
-      - Cloud APIs: OpenAI, Groq (siêu nhanh), DeepSeek, Google Gemini, Anthropic Claude, OpenRouter
+      - Cloud APIs: OpenAI, Groq (siêu nhanh), DeepSeek, Google Gemini, Anthropic Claude, OpenRouter, HHTech API
     """
     def __init__(
         self,
@@ -49,7 +49,10 @@ class LLMClient:
     def _resolve_endpoint(self) -> str:
         """Tự động phân giải URL API theo provider đã chọn."""
         if self.base_url:
-            return self.base_url
+            base = self.base_url.rstrip("/")
+            if not base.endswith("/chat/completions") and not base.endswith("/messages"):
+                return f"{base}/chat/completions"
+            return base
 
         if self.provider == "ollama":
             return OLLAMA_API_URL
@@ -62,7 +65,6 @@ class LLMClient:
         elif self.provider == "openrouter":
             return "https://openrouter.ai/api/v1/chat/completions"
         elif self.provider == "gemini":
-            # Endpoint chuẩn OpenAI compatibility chính thức của Google Gemini
             return "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         elif self.provider == "anthropic":
             return "https://api.anthropic.com/v1/messages"
@@ -83,11 +85,15 @@ class LLMClient:
             elif self.provider == "anthropic":
                 res = self._call_anthropic(prompt_body, user)
             else:
-                # Tất cả các provider dùng chuẩn OpenAI (openai, groq, deepseek, gemini, openrouter, custom)
+                # Tất cả các provider dùng chuẩn OpenAI (custom, openai, groq, deepseek, gemini...)
                 res = self._call_openai_compatible(prompt_body, user)
 
             if res is not None:
                 cleaned = res.rstrip("\r\n")
+                # Xóa markdown codeblock nếu AI lỡ sinh ```bash ... ```
+                if cleaned.startswith("```"):
+                    lines = cleaned.split("\n")
+                    cleaned = "\n".join([l for l in lines if not l.startswith("```")]).strip()
                 return (cleaned + "\n") if cleaned else ""
         except Exception:
             # Fallback an toàn khi mạng gặp lỗi, API hết hạn, rate-limit 429...
@@ -104,6 +110,7 @@ class LLMClient:
             "stream": False,
             "options": {
                 "temperature": 0.1,
+                "num_predict": 256,
                 "stop": ["\nroot@", "\nubuntu@", f"\n{user}@"]
             }
         }
@@ -115,9 +122,11 @@ class LLMClient:
     def _call_openai_compatible(self, prompt: str, user: str) -> Optional[str]:
         """Gọi bất kỳ API nào theo chuẩn OpenAI Chat Completions (OpenAI, Groq, DeepSeek, Gemini, OpenRouter...)."""
         headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
+            "Content-Type": "application/json"
         }
+        if self.api_key and self.api_key.lower() != "none":
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
         payload = {
             "model": self.model,
             "messages": [
@@ -169,34 +178,33 @@ class LLMClient:
             if "-a" in command:
                 return f"Linux {HOSTNAME} 5.15.0-88-generic #98-Ubuntu SMP Mon Oct 2 15:18:56 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux\n"
             return "Linux\n"
-        elif cmd == "id":
-            return "uid=0(root) gid=0(root) groups=0(root)\n" if user == "root" else f"uid=1000({user}) gid=1000({user}) groups=1000({user}),4(adm),27(sudo)\n"
-        elif cmd == "whoami":
-            return f"{user}\n"
-        elif cmd == "uptime":
-            return " 20:50:12 up 14 days,  3:22,  1 user,  load average: 0.08, 0.03, 0.01\n"
-        elif cmd == "hostname":
-            return f"{HOSTNAME}\n"
-        elif cmd == "ps":
-            return (
-                "  PID TTY          TIME CMD\n"
-                "    1 ?        00:00:02 systemd\n"
-                "  482 ?        00:00:00 systemd-journal\n"
-                "  812 ?        00:00:00 sshd\n"
-                " 1420 pts/0    00:00:00 bash\n"
-                " 1489 pts/0    00:00:00 ps\n"
-            )
-        elif cmd in ["ifconfig", "ip"]:
+        
+        elif cmd in ("ip", "ifconfig"):
             return (
                 "eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500\n"
                 "        inet 192.168.1.100  netmask 255.255.255.0  broadcast 192.168.1.255\n"
-                "        ether 02:42:ac:11:00:02  txqueuelen 1000  (Ethernet)\n"
+                "        inet6 fe80::a00:27ff:fe4e:66a1  prefixlen 64  scopeid 0x20<link>\n"
+                "        ether 08:00:27:4e:66:a1  txqueuelen 1000  (Ethernet)\n"
+                "        RX packets 14523  bytes 1892102 (1.8 MB)\n"
+                "        TX packets 8921  bytes 982103 (982.1 KB)\n"
             )
-        elif cmd == "python3" or cmd == "python":
-            if "-c" in command:
-                return "Command executed successfully.\n"
-            return "Python 3.10.12 (main, Nov 20 2023, 15:14:05) [GCC 11.4.0] on linux\nType \"help\", \"copyright\", \"credits\" or \"license\" for more information.\n"
-        elif cmd in ["curl", "wget"]:
-            return f"--2026-10-30 20:50:15--  {command.split()[-1]}\nConnecting... connected.\nHTTP request sent, awaiting response... 200 OK\nLength: 4096 (4.0K)\nSaving to: 'output'\n\n100%[===================>] 4.00K  --.-KB/s    in 0.001s\n"
-        else:
-            return f"bash: {cmd}: command not found\n"
+
+        elif cmd == "ps":
+            return (
+                "USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND\n"
+                "root           1  0.0  0.2 168244 11420 ?        Ss   12:00   0:01 /sbin/init\n"
+                "root         450  0.0  0.1  28912  6210 ?        Ss   12:00   0:00 /lib/systemd/systemd-journald\n"
+                "root         890  0.0  0.2  15820  8400 ?        Ss   12:00   0:00 /usr/sbin/sshd -D\n"
+                f"{user}       1204  0.0  0.1  14200  4210 pts/0    Ss   12:05   0:00 -bash\n"
+                f"{user}       1450  0.0  0.1  18900  3210 pts/0    R+   12:10   0:00 ps\n"
+            )
+
+        elif cmd in ("curl", "wget"):
+            return (
+                "HTTP/1.1 200 OK\n"
+                "Content-Type: text/plain\n"
+                "Connection: close\n\n"
+                "OK\n"
+            )
+
+        return f"bash: {cmd}: command not found\n"
