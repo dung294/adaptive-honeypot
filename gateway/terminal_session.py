@@ -119,6 +119,11 @@ class TerminalSession:
 
                         self.channel.send(self.get_honeypot_prompt())
 
+                    # Tab Autocomplete (byte 9)
+                    elif byte == 9:
+                        last_was_cr = False
+                        cmd_buffer = self.handle_tab_completion(cmd_buffer)
+
                     # Backspace / Delete
                     elif byte in (127, 8):
                         last_was_cr = False
@@ -217,6 +222,11 @@ class TerminalSession:
                                 self.channel.send(formatted_out)
 
                         self.channel.send(self.get_admin_prompt())
+
+                    # Tab Autocomplete (byte 9)
+                    elif byte == 9:
+                        last_was_cr = False
+                        cmd_buffer = self.handle_admin_tab_completion(cmd_buffer)
 
                     # Backspace / Delete
                     elif byte in (127, 8):
@@ -399,3 +409,113 @@ class TerminalSession:
             return "[!] Lệnh bị timeout sau 45 giây.", False
         except Exception as e:
             return f"[!] Lỗi thực thi lệnh trên Host OS: {e}", False
+
+    def handle_tab_completion(self, cmd_buffer: str) -> str:
+        """Xử lý Tab Autocomplete giống hệt GNU Bash thật trên Ubuntu."""
+        if not cmd_buffer:
+            return cmd_buffer
+
+        tokens = cmd_buffer.split()
+        ends_with_space = cmd_buffer.endswith(" ")
+
+        # 1. Đang gõ tên lệnh (chưa có dấu cách) -> Gợi ý lệnh Linux
+        if not ends_with_space and len(tokens) == 1:
+            current_word = tokens[0]
+            from ai_engine.router import CommandRouter
+            matches = [cmd for cmd in sorted(CommandRouter.KNOWN_LINUX_COMMANDS) if cmd.startswith(current_word)]
+            
+            if len(matches) == 1:
+                match = matches[0]
+                remainder = match[len(current_word):] + " "
+                self.channel.send(remainder)
+                return cmd_buffer + remainder
+            elif len(matches) > 1:
+                prefix = os.path.commonprefix(matches)
+                if len(prefix) > len(current_word):
+                    remainder = prefix[len(current_word):]
+                    self.channel.send(remainder)
+                    return cmd_buffer + remainder
+                else:
+                    self.channel.send("\r\n" + "  ".join(matches[:24]) + "\r\n")
+                    self.channel.send(self.get_honeypot_prompt() + cmd_buffer)
+                    return cmd_buffer
+            else:
+                self.channel.send("\x07")
+                return cmd_buffer
+
+        # 2. Đang gõ đối số đường dẫn file/thư mục
+        current_word = "" if ends_with_space else tokens[-1]
+
+        if "/" in current_word:
+            dir_part, file_prefix = current_word.rsplit("/", 1)
+            target_dir = self.vfs.resolve_path(dir_part if dir_part else "/")
+        else:
+            dir_part = ""
+            file_prefix = current_word
+            target_dir = self.vfs.cwd
+
+        node = self.vfs._get_node(target_dir)
+        if not node or node.get("type") != "dir":
+            self.channel.send("\x07")
+            return cmd_buffer
+
+        children = node.get("children", {})
+        matches = [name for name in sorted(children.keys()) if name.startswith(file_prefix)]
+        
+        # Ẩn file ẩn nếu không chủ động gõ dấu chấm
+        if not file_prefix.startswith("."):
+            matches = [m for m in matches if not m.startswith(".")]
+
+        if len(matches) == 1:
+            match = matches[0]
+            is_dir = children[match].get("type") == "dir"
+            suffix = "/" if is_dir else " "
+            remainder = match[len(file_prefix):] + suffix
+            self.channel.send(remainder)
+            return cmd_buffer + remainder
+        elif len(matches) > 1:
+            prefix = os.path.commonprefix(matches)
+            if len(prefix) > len(file_prefix):
+                remainder = prefix[len(file_prefix):]
+                self.channel.send(remainder)
+                return cmd_buffer + remainder
+            else:
+                self.channel.send("\r\n" + "  ".join(matches) + "\r\n")
+                self.channel.send(self.get_honeypot_prompt() + cmd_buffer)
+                return cmd_buffer
+        else:
+            self.channel.send("\x07")
+            return cmd_buffer
+
+    def handle_admin_tab_completion(self, cmd_buffer: str) -> str:
+        """Xử lý Tab Autocomplete cho Admin Console."""
+        if not cmd_buffer:
+            return cmd_buffer
+
+        tokens = cmd_buffer.split()
+        ends_with_space = cmd_buffer.endswith(" ")
+
+        if not ends_with_space and len(tokens) == 1:
+            admin_cmds = ["status", "logs", "quarantine", "help", "exit", "ls", "ps", "cd", "cat", "top", "docker", "systemctl"]
+            matches = [c for c in admin_cmds if c.startswith(tokens[0].lower())]
+            if len(matches) == 1:
+                rem = matches[0][len(tokens[0]):] + " "
+                self.channel.send(rem)
+                return cmd_buffer + rem
+
+        word = "" if ends_with_space else tokens[-1]
+        try:
+            cwd_path = Path(self.admin_cwd)
+            files = [f.name for f in cwd_path.glob("*") if f.name.startswith(word)]
+            if len(files) == 1:
+                f_name = files[0]
+                is_dir = (cwd_path / f_name).is_dir()
+                suffix = "/" if is_dir else " "
+                rem = f_name[len(word):] + suffix
+                self.channel.send(rem)
+                return cmd_buffer + rem
+        except Exception:
+            pass
+
+        self.channel.send("\x07")
+        return cmd_buffer
