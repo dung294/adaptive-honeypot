@@ -13,6 +13,53 @@ class HoneypotLogger:
     def __init__(self, log_path: Path = EVENT_LOG_FILE):
         self.log_path = log_path
 
+    def log_auth_attempt(
+        self,
+        source_ip: str,
+        source_port: int,
+        username: str,
+        password: str,
+        success: bool,
+        is_admin: bool = False
+    ):
+        """Ghi nhận lại toàn bộ nỗ lực đăng nhập (thành công hoặc dò mật khẩu thất bại)."""
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        session_id = str(uuid.uuid4())
+        event_key = f"{now}:{session_id}:Auth"
+        
+        mitre_matches = []
+        if not success:
+            mitre_matches = [{
+                "technique_id": "T1110",
+                "technique_name": "Brute Force / Password Guessing",
+                "tactic": "Credential Access"
+            }]
+
+        event_record = {
+            "event_key": event_key,
+            "timestamp": now,
+            "source_ip": source_ip,
+            "source_port": source_port,
+            "protocol": "SSH",
+            "session_id": session_id,
+            "username": username,
+            "password": password,
+            "auth_success": success,
+            "is_admin": is_admin,
+            "event_status": "Auth_Success" if success else "Auth_Failed",
+            "message": f"SSH Auth {'Thành công' if success else 'Thất bại'} cho user '{username}'",
+            "mitre_techniques": mitre_matches,
+            "ingested_at": now
+        }
+
+        try:
+            with open(self.log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(event_record, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
+            
+        return event_record
+
     def log_interaction(
         self,
         session_id: str,
@@ -51,7 +98,10 @@ class HoneypotLogger:
         }
 
         # Ghi append vào file JSONL
-        with open(self.log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(event_record, ensure_ascii=False) + "\n")
+        try:
+            with open(self.log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(event_record, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
             
         return event_record

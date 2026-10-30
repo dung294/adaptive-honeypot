@@ -37,17 +37,32 @@ SSH_PORT = int(os.getenv("SSH_PORT", "2222"))
 SSH_BANNER = os.getenv("SSH_BANNER", "SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.6")
 SERVER_KEY_PATH = BASE_DIR / "server.key"
 
-# Cấu hình Quản trị viên (Admin Remote Control từ máy Windows)
+# Cấu hình Quản trị viên (Admin Remote Control từ máy Windows vào điều khiển máy thật)
 ADMIN_ENABLED = os.getenv("ADMIN_ENABLED", "true").lower() in ("true", "1", "yes")
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
-# Danh sách IP được phép làm admin: '*' cho phép tất cả, hoặc danh sách phân cách bởi dấu phẩy (ví dụ: '192.168.1.5, 10.0.0.2')
+# Danh sách IP được phép làm admin: '*' cho phép tất cả, hoặc danh sách IP (ví dụ: '192.168.1.5, 10.0.0.2')
 ADMIN_ALLOWED_IPS = [ip.strip() for ip in os.getenv("ADMIN_ALLOWED_IPS", "*").split(",") if ip.strip()]
 
-# Cấu hình Honeypot Auth:
-# - False (Mặc định): Chế độ Bẫy (Deception). Hacker nhập user/pass bất kỳ đều cho vào bẫy ảo VFS+LLM để thu thập mẫu.
-# - True: Chỉ người dùng có user/pass hợp lệ mới được vào.
+# Cấu hình Mật khẩu cho Bẫy ảo Honeypot (KHÔNG PHẢI PASS NÀO CŨNG VÀO ĐƯỢC)
+# Chỉ những mật khẩu nằm trong danh sách này mới được cấp quyền truy cập vào bẫy ảo
+# Hacker nhập sai pass sẽ bị từ chối (Permission denied) và hệ thống ghi nhận log dò pass (Brute Force T1110)
+HONEYPOT_ALLOWED_PASSWORDS = [
+    p.strip() for p in os.getenv(
+        "HONEYPOT_ALLOWED_PASSWORDS",
+        "123456,root,password,admin,ubuntu,toor,supersecretpassword123"
+    ).split(",") if p.strip()
+]
+
+# Danh sách username được phép vào honeypot ('*' = bất kỳ username nào)
+HONEYPOT_ALLOWED_USERS = [
+    u.strip() for u in os.getenv("HONEYPOT_ALLOWED_USERS", "*").split(",") if u.strip()
+]
+
+# Chế độ Strict Auth:
+# - False: Cho phép hacker thử dò pass Honeypot (đúng pass honeypot thì vào bẫy ảo)
+# - True: Khóa hoàn toàn, chỉ Admin mới được kết nối
 HONEYPOT_STRICT_AUTH = os.getenv("HONEYPOT_STRICT_AUTH", "false").lower() in ("true", "1", "yes")
 
 # Cấu hình Persona Hệ thống ảo (Dành cho Hacker bị lừa vào bẫy)

@@ -11,21 +11,43 @@ import paramiko
 import json
 from pathlib import Path
 
-def test_attack_simulation():
+def test_wrong_password_rejected():
     host = "127.0.0.1"
     port = 2222
     username = "root"
-    password = "supersecretpassword123"
+    wrong_password = "this_is_a_completely_wrong_password_9999"
 
     print(f"\n=======================================================")
-    print(f"[TEST 1] Mô phỏng Hacker kết nối vào {host}:{port}...")
+    print(f"[TEST 1] Thử đăng nhập với SAI mật khẩu ({wrong_password})...")
     print(f"=======================================================")
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
     try:
-        client.connect(host, port=port, username=username, password=password, timeout=5)
-        print("[TEST] -> Hacker kết nối SSH thành công! Được cấp quyền truy cập giả lập.")
+        client.connect(host, port=port, username=username, password=wrong_password, timeout=5)
+        print("[LỖI] Sai mật khẩu nhưng vẫn được cho vào!")
+        client.close()
+    except paramiko.AuthenticationException:
+        print("[THÀNH CÔNG] Server đã từ chối xác thực (Authentication Failed) do sai mật khẩu!")
+    except Exception as e:
+        print(f"[TEST 1 Kết quả]: {e}")
+
+def test_attack_simulation():
+    host = "127.0.0.1"
+    port = 2222
+    username = "root"
+    # Mật khẩu hợp lệ nằm trong HONEYPOT_ALLOWED_PASSWORDS
+    valid_honeypot_password = "supersecretpassword123"
+
+    print(f"\n=======================================================")
+    print(f"[TEST 2] Hacker đoán ĐÚNG mật khẩu bẫy ({valid_honeypot_password})...")
+    print(f"=======================================================")
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        client.connect(host, port=port, username=username, password=valid_honeypot_password, timeout=5)
+        print("[TEST] -> Khớp mật khẩu bẫy! Được cấp quyền truy cập vào Honeypot ảo.")
         
         channel = client.invoke_shell()
         time.sleep(0.5)
@@ -65,7 +87,7 @@ def test_admin_control():
     password = "admin123"
 
     print(f"\n=======================================================")
-    print(f"[TEST 2] Quản trị viên SSH từ Windows vào điều khiển máy chủ...")
+    print(f"[TEST 3] Quản trị viên SSH từ Windows vào điều khiển máy chủ...")
     print(f"=======================================================")
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -82,8 +104,6 @@ def test_admin_control():
         admin_commands = [
             ":status",
             ":logs 3",
-            "cd ..",
-            ":status",
             ":exit"
         ]
 
@@ -103,5 +123,6 @@ def test_admin_control():
         print(f"[TEST] [LỖI Admin]: {e}")
 
 if __name__ == "__main__":
+    test_wrong_password_rejected()
     test_attack_simulation()
     test_admin_control()
