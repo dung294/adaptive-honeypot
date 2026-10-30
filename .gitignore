@@ -16,13 +16,17 @@ env/
 server.key
 *.pem
 
+# File tạo log tấn công mô phỏng (Lab / CTI Generator) - Giữ local, không push
+attack_lab_generator.py
+
 # Mẫu mã độc thu thập (Quarantine)
 quarantine/*
 !quarantine/.gitkeep
 
 # Nhật ký sự kiện thời gian thực
-logs/*.jsonl
+logs/*
 !logs/.gitkeep
+*.log
 
 # IDE & Editor
 .vscode/

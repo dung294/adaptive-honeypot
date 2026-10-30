@@ -2,6 +2,7 @@ import os
 import socket
 import threading
 import paramiko
+import uuid
 from pathlib import Path
 from gateway.terminal_session import TerminalSession
 from threat_intel.logger import HoneypotLogger
@@ -16,6 +17,7 @@ class HoneypotSSHInterface(paramiko.ServerInterface):
         self.client_port = client_port
         self.logger = logger
         self.username = "root"
+        self.session_id = str(uuid.uuid4())
         self.event = threading.Event()
 
     def check_channel_request(self, kind, chanid):
@@ -32,12 +34,12 @@ class HoneypotSSHInterface(paramiko.ServerInterface):
         if user_ok and pass_ok:
             print(f"[+] [AUTH SUCCESS] IP: {self.client_ip}:{self.client_port} | User: '{username}' | Pass: '{password}' -> CẤP QUYỀN VÀO BẪY ẢO")
             if self.logger:
-                self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=True)
+                self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=True, session_id=self.session_id)
             return paramiko.AUTH_SUCCESSFUL
         else:
             print(f"[-] [AUTH FAILED] IP: {self.client_ip}:{self.client_port} | User: '{username}' | Pass: '{password}' -> TỪ CHỐI (BRUTE FORCE T1110)")
             if self.logger:
-                self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=False)
+                self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=False, session_id=str(uuid.uuid4()))
             return paramiko.AUTH_FAILED
 
     def check_auth_none(self, username):
@@ -82,10 +84,12 @@ class SSHGatewayServer:
             
             channel = transport.accept(20)
             if channel is None:
+                self.logger.log_connection(client_ip, client_port, status="Immediate_Exit")
                 return
 
             server_interface.event.wait(10)
             if not server_interface.event.is_set():
+                self.logger.log_connection(client_ip, client_port, status="Immediate_Exit")
                 return
 
             # Bắt đầu phiên Terminal Honeypot
@@ -94,7 +98,8 @@ class SSHGatewayServer:
                 client_ip=client_ip,
                 client_port=client_port,
                 username=server_interface.username,
-                logger=self.logger
+                logger=self.logger,
+                session_id=server_interface.session_id
             )
             session.run()
 

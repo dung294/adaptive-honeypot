@@ -174,6 +174,13 @@ class CommandRouter:
             latency = (time.perf_counter() - start_time) * 1000
             return (err + "\n" if err else ""), "VFS", latency
 
+        elif base_cmd == "echo":
+            latency = (time.perf_counter() - start_time) * 1000
+            text = working_cmd[4:].strip()
+            if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
+                text = text[1:-1]
+            return text + "\n", "VFS", latency
+
         # =====================================================================
         # FAST-PATH VFS & CHUẨN HÓA CÁC LỆNH HỆ THỐNG LINUX (< 0.1ms)
         # =====================================================================

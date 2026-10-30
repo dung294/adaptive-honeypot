@@ -7,16 +7,20 @@ class MitreMapper:
     Giúp tự động phân loại chiến thuật (Tactics) và kỹ thuật (Techniques).
     """
     RULES = [
-        (r"\b(uname|hostname|cat\s+/etc/os-release|cat\s+/etc/issue)\b", "T1082", "System Information Discovery", "Discovery"),
-        (r"\b(whoami|id|groups)\b", "T1033", "System Owner/User Discovery", "Discovery"),
-        (r"\b(cat\s+/etc/passwd|cat\s+/etc/shadow)\b", "T1087.001", "Local Account Discovery", "Discovery"),
+        (r"\b(uname|hostname|cat\s+/etc/os-release|cat\s+/etc/issue|env|lscpu|free|df|uptime)\b", "T1082", "System Information Discovery", "Discovery"),
+        (r"\b(whoami|id|groups|w|who)\b", "T1033", "System Owner/User Discovery", "Discovery"),
+        (r"\b(cat\s+/etc/passwd|cat\s+/etc/shadow|cat\s+/etc/group)\b", "T1087.001", "Local Account Discovery", "Discovery"),
         (r"\b(ps|top|htop|pstree)\b", "T1057", "Process Discovery", "Discovery"),
         (r"\b(ifconfig|ip\s+addr|ip\s+a|netstat|ss|route|arp)\b", "T1016", "System Network Configuration Discovery", "Discovery"),
+        (r"\b(ping|traceroute|nmap)\b", "T1018", "Remote System Discovery", "Discovery"),
+        (r"\b(ls|dir|find|locate|pwd)\b", "T1083", "File and Directory Discovery", "Discovery"),
+        (r"\b(cat\s+~?/\.ssh/id_rsa|cat\s+~?/\.bash_history|grep\s+-[rn].*pass)\b", "T1552.001", "Credentials In Files", "Credential Access"),
+        (r"\b(sudo\s+-l|sudo\s+su|su\s+-|sudo\s+cat)\b", "T1548.003", "Sudo and Sudo Caching", "Privilege Escalation"),
         (r"\b(curl|wget|scp|sftp|ftp|tftp)\b", "T1105", "Ingress Tool Transfer", "Command and Control"),
         (r"\b(chmod\s+(\+x|[0-7]{3,4}))\b", "T1222.002", "Linux File and Directory Permissions Modification", "Defense Evasion"),
         (r"\b(python3?|perl|bash|sh|zsh|php)\b", "T1059.004", "Unix Shell", "Execution"),
         (r"\b(crontab|/etc/cron)\b", "T1053.003", "Cron", "Persistence"),
-        (r"\b(rm\s+-rf?|history\s+-c)\b", "T1070.004", "File Deletion / Indicator Removal", "Defense Evasion"),
+        (r"\b(rm\s+-rf?|history\s+-c|unset\s+HISTFILE)\b", "T1070.004", "File Deletion / Indicator Removal", "Defense Evasion"),
     ]
 
     @classmethod

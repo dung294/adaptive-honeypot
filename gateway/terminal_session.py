@@ -23,13 +23,16 @@ WELCOME_BANNER = (
 )
 
 class TerminalSession:
-    def __init__(self, channel, client_ip: str, client_port: int, username: str, logger: HoneypotLogger):
+    def __init__(self, channel, client_ip: str, client_port: int, username: str, logger: HoneypotLogger, session_id: str = None):
         self.channel = channel
         self.client_ip = client_ip
         self.client_port = client_port
         self.username = username or DEFAULT_USER
-        self.session_id = str(uuid.uuid4())
+        self.session_id = session_id or str(uuid.uuid4())
         self.logger = logger
+        self.start_time = time.time()
+        self.commands_count = 0
+        self.normal_exit = False
         
         # Khởi tạo cây tệp ảo VFS và Router cho phiên
         self.vfs = VirtualFileSystem(hostname=HOSTNAME, user=self.username)
@@ -49,15 +52,30 @@ class TerminalSession:
         return f"\033[01;32m{self.username}@{HOSTNAME}\033[00m:\033[01;34m{cwd}\033[00m{symbol} "
 
     def run(self):
-        """Xử lý phiên tương tác dòng lệnh với hacker: hỗ trợ Tab, Mũi tên Lên/Xuống, Backspace, Ctrl+C."""
+        """Xử lý phiên tương tác dòng lệnh với hacker: hỗ trợ đầy đủ GNU Readline,
+        di chuyển con trỏ Trái/Phải, Home/End, xóa giữa dòng, chèn chữ, Tab, Mũi tên Lên/Xuống, Backspace, Ctrl+C.
+        """
         try:
             self.channel.send(WELCOME_BANNER)
             self.channel.send(self.get_prompt())
 
             cmd_buffer = ""
+            cursor_pos = 0  # Vị trí con trỏ trong cmd_buffer (0 đến len(cmd_buffer))
             last_was_cr = False
             escape_mode = False
             escape_buf = ""
+
+            def redraw_line(new_buf: str):
+                nonlocal cmd_buffer, cursor_pos
+                # Di chuyển con trỏ về đầu dòng (ngay sau dấu prompt)
+                if cursor_pos > 0:
+                    self.channel.send(f"\x1b[{cursor_pos}D")
+                # Xóa toàn bộ dòng từ vị trí con trỏ đến hết
+                self.channel.send("\x1b[K")
+                # In nội dung mới
+                self.channel.send(new_buf)
+                cmd_buffer = new_buf
+                cursor_pos = len(new_buf)
 
             while True:
                 data = self.channel.recv(1024)
@@ -67,10 +85,10 @@ class TerminalSession:
                 for byte in data:
                     char = chr(byte)
 
-                    # 1. Xử lý Escape Sequence (Phím mũi tên LÊN / XUỐNG / TRÁI / PHẢI)
+                    # 1. Xử lý Escape Sequence (Phím mũi tên, Home, End, Delete, v.v.)
                     if escape_mode:
                         escape_buf += char
-                        # Các chuỗi ANSI CSI thường kết thúc bằng chữ cái A, B, C, D, ~, F, H
+                        # Các chuỗi ANSI CSI kết thúc bằng chữ cái hoặc dấu ~
                         if char in ('A', 'B', 'C', 'D', '~', 'F', 'H'):
                             escape_mode = False
                             
@@ -78,27 +96,61 @@ class TerminalSession:
                             if escape_buf.endswith("[A") or escape_buf.endswith("OA"):
                                 if self.history and self.history_idx > 0:
                                     self.history_idx -= 1
-                                    # Xóa toàn bộ nội dung đang gõ trên màn hình
-                                    self.channel.send("\b \b" * len(cmd_buffer))
-                                    cmd_buffer = self.history[self.history_idx]
-                                    self.channel.send(cmd_buffer)
+                                    redraw_line(self.history[self.history_idx])
                                 else:
-                                    self.channel.send("\x07") # Bell
+                                    self.channel.send("\x07")
 
                             # MŨI TÊN XUỐNG (DOWN ARROW) -> Tiến tới lệnh sau trong lịch sử
                             elif escape_buf.endswith("[B") or escape_buf.endswith("OB"):
                                 if self.history and self.history_idx < len(self.history) - 1:
                                     self.history_idx += 1
-                                    self.channel.send("\b \b" * len(cmd_buffer))
-                                    cmd_buffer = self.history[self.history_idx]
-                                    self.channel.send(cmd_buffer)
+                                    redraw_line(self.history[self.history_idx])
                                 elif self.history_idx == len(self.history) - 1:
                                     self.history_idx = len(self.history)
-                                    self.channel.send("\b \b" * len(cmd_buffer))
-                                    cmd_buffer = ""
+                                    redraw_line("")
                                 else:
                                     self.channel.send("\x07")
-                            
+
+                            # MŨI TÊN TRÁI (LEFT ARROW) -> Dịch con trỏ sang trái 1 ký tự
+                            elif escape_buf.endswith("[D") or escape_buf.endswith("OD"):
+                                if cursor_pos > 0:
+                                    cursor_pos -= 1
+                                    self.channel.send("\x1b[D")
+                                else:
+                                    self.channel.send("\x07")
+
+                            # MŨI TÊN PHẢI (RIGHT ARROW) -> Dịch con trỏ sang phải 1 ký tự
+                            elif escape_buf.endswith("[C") or escape_buf.endswith("OC"):
+                                if cursor_pos < len(cmd_buffer):
+                                    cursor_pos += 1
+                                    self.channel.send("\x1b[C")
+                                else:
+                                    self.channel.send("\x07")
+
+                            # PHÍM HOME -> Về đầu dòng lệnh
+                            elif escape_buf.endswith("[H") or escape_buf.endswith("OH") or escape_buf.endswith("[1~") or escape_buf.endswith("[7~"):
+                                if cursor_pos > 0:
+                                    self.channel.send(f"\x1b[{cursor_pos}D")
+                                    cursor_pos = 0
+
+                            # PHÍM END -> Về cuối dòng lệnh
+                            elif escape_buf.endswith("[F") or escape_buf.endswith("OF") or escape_buf.endswith("[4~") or escape_buf.endswith("[8~"):
+                                if cursor_pos < len(cmd_buffer):
+                                    diff = len(cmd_buffer) - cursor_pos
+                                    self.channel.send(f"\x1b[{diff}C")
+                                    cursor_pos = len(cmd_buffer)
+
+                            # PHÍM DELETE -> Xóa ký tự tại vị trí con trỏ
+                            elif escape_buf.endswith("[3~"):
+                                if cursor_pos < len(cmd_buffer):
+                                    cmd_buffer = cmd_buffer[:cursor_pos] + cmd_buffer[cursor_pos + 1:]
+                                    remainder = cmd_buffer[cursor_pos:]
+                                    self.channel.send("\x1b[K" + remainder)
+                                    if remainder:
+                                        self.channel.send(f"\x1b[{len(remainder)}D")
+                                else:
+                                    self.channel.send("\x07")
+
                             escape_buf = ""
                         continue
 
@@ -119,8 +171,10 @@ class TerminalSession:
                         self.channel.send("\r\n")
                         command = cmd_buffer.strip()
                         cmd_buffer = ""
+                        cursor_pos = 0
 
                         if command:
+                            self.commands_count += 1
                             # Lưu vào lịch sử lệnh
                             if not self.history or self.history[-1] != command:
                                 self.history.append(command)
@@ -128,8 +182,23 @@ class TerminalSession:
 
                             stdout, handler, latency = self.router.execute(command, user=self.username)
                             
+                            # Phân tích MITRE & Ghi nhật ký sự kiện
+                            mitre_tags = MitreMapper.map_command(command)
+                            self.logger.log_interaction(
+                                session_id=self.session_id,
+                                source_ip=self.client_ip,
+                                source_port=self.client_port,
+                                username=self.username,
+                                command=command,
+                                command_output="" if stdout == "__EXIT__" else stdout,
+                                handler_type=handler,
+                                latency_ms=latency,
+                                mitre_matches=mitre_tags
+                            )
+
                             # Nếu hacker gõ exit/logout
                             if stdout == "__EXIT__":
+                                self.normal_exit = True
                                 self.channel.send("logout\r\n")
                                 return
 
@@ -139,38 +208,33 @@ class TerminalSession:
                                 formatted_stdout += "\r\n"
                             self.channel.send(formatted_stdout)
 
-                            # Phân tích MITRE & Ghi nhật ký sự kiện
-                            mitre_tags = MitreMapper.map_command(command)
-                            self.logger.log_interaction(
-                                session_id=self.session_id,
-                                source_ip=self.client_ip,
-                                source_port=self.client_port,
-                                username=self.username,
-                                command=command,
-                                command_output=stdout,
-                                handler_type=handler,
-                                latency_ms=latency,
-                                mitre_matches=mitre_tags
-                            )
-
                         self.channel.send(self.get_prompt())
 
                     # 3. Tab Autocompletion (phím Tab = byte 9)
                     elif byte == 9:
                         last_was_cr = False
                         cmd_buffer = self.handle_tab_completion(cmd_buffer)
+                        cursor_pos = len(cmd_buffer)
 
-                    # 4. Backspace / Delete
+                    # 4. Backspace (byte 127 hoặc byte 8)
                     elif byte in (127, 8):
                         last_was_cr = False
-                        if len(cmd_buffer) > 0:
-                            cmd_buffer = cmd_buffer[:-1]
-                            self.channel.send("\b \b")
+                        if cursor_pos > 0:
+                            cmd_buffer = cmd_buffer[:cursor_pos - 1] + cmd_buffer[cursor_pos:]
+                            cursor_pos -= 1
+                            self.channel.send("\b\x1b[K")
+                            remainder = cmd_buffer[cursor_pos:]
+                            self.channel.send(remainder)
+                            if remainder:
+                                self.channel.send(f"\x1b[{len(remainder)}D")
+                        else:
+                            self.channel.send("\x07")
 
                     # 5. Ctrl+C (Hủy dòng lệnh hiện tại)
                     elif byte == 3:
                         last_was_cr = False
                         cmd_buffer = ""
+                        cursor_pos = 0
                         self.history_idx = len(self.history)
                         self.channel.send("^C\r\n")
                         self.channel.send(self.get_prompt())
@@ -179,18 +243,82 @@ class TerminalSession:
                     elif byte == 4:
                         last_was_cr = False
                         if not cmd_buffer:
+                            self.normal_exit = True
                             self.channel.send("exit\r\n")
                             return
 
-                    # 7. Ký tự in được thông thường
+                    # 7. Ctrl+A (Home)
+                    elif byte == 1:
+                        last_was_cr = False
+                        if cursor_pos > 0:
+                            self.channel.send(f"\x1b[{cursor_pos}D")
+                            cursor_pos = 0
+
+                    # 8. Ctrl+E (End)
+                    elif byte == 5:
+                        last_was_cr = False
+                        if cursor_pos < len(cmd_buffer):
+                            diff = len(cmd_buffer) - cursor_pos
+                            self.channel.send(f"\x1b[{diff}C")
+                            cursor_pos = len(cmd_buffer)
+
+                    # 9. Ctrl+U (Xóa từ con trỏ về đầu dòng)
+                    elif byte == 21:
+                        last_was_cr = False
+                        if cursor_pos > 0:
+                            cmd_buffer = cmd_buffer[cursor_pos:]
+                            self.channel.send(f"\x1b[{cursor_pos}D\x1b[K" + cmd_buffer)
+                            if cmd_buffer:
+                                self.channel.send(f"\x1b[{len(cmd_buffer)}D")
+                            cursor_pos = 0
+
+                    # 10. Ctrl+K (Xóa từ con trỏ đến cuối dòng)
+                    elif byte == 11:
+                        last_was_cr = False
+                        cmd_buffer = cmd_buffer[:cursor_pos]
+                        self.channel.send("\x1b[K")
+
+                    # 11. Ctrl+L (Clear screen)
+                    elif byte == 12:
+                        last_was_cr = False
+                        self.channel.send("\x1b[2J\x1b[H")
+                        self.channel.send(self.get_prompt() + cmd_buffer)
+                        if cursor_pos < len(cmd_buffer):
+                            self.channel.send(f"\x1b[{len(cmd_buffer) - cursor_pos}D")
+
+                    # 12. Ký tự in được thông thường
                     elif 32 <= byte <= 126:
                         last_was_cr = False
-                        cmd_buffer += char
-                        self.channel.send(char)
+                        if cursor_pos == len(cmd_buffer):
+                            cmd_buffer += char
+                            cursor_pos += 1
+                            self.channel.send(char)
+                        else:
+                            # Chèn ký tự vào giữa dòng
+                            cmd_buffer = cmd_buffer[:cursor_pos] + char + cmd_buffer[cursor_pos:]
+                            cursor_pos += 1
+                            remainder = cmd_buffer[cursor_pos:]
+                            self.channel.send(char + "\x1b[K" + remainder)
+                            if remainder:
+                                self.channel.send(f"\x1b[{len(remainder)}D")
 
         except Exception:
             pass
         finally:
+            try:
+                duration = time.time() - self.start_time
+                reason = "normal" if self.normal_exit else "abrupt_disconnect"
+                self.logger.log_session_end(
+                    session_id=self.session_id,
+                    source_ip=self.client_ip,
+                    source_port=self.client_port,
+                    username=self.username,
+                    duration_sec=duration,
+                    commands_count=self.commands_count,
+                    reason=reason
+                )
+            except Exception:
+                pass
             try:
                 self.channel.close()
             except Exception:

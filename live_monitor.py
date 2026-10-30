@@ -12,8 +12,8 @@ from pathlib import Path
 
 # Đảm bảo Windows terminal in UTF-8 không lỗi font
 if sys.platform == "win32":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", line_buffering=True)
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", line_buffering=True)
 
 VM_HOST = "192.168.101.218"
 VM_PORT = 22
@@ -113,7 +113,7 @@ def main():
                 line_str = line.strip()
                 if line_str:
                     # In ra màn hình console Windows dạng đẹp
-                    print(format_event(line_str))
+                    print(format_event(line_str), flush=True)
                     # Ghi đồng bộ append vào file local
                     local_f.write(line_str + "\n")
                     local_f.flush()
