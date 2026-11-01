@@ -31,6 +31,7 @@ quarantine/*
 # Nhật ký sự kiện thời gian thực
 logs/*
 !logs/.gitkeep
+!logs/sessions.json
 *.log
 
 # IDE & Editor
