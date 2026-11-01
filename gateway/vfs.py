@@ -299,3 +299,11 @@ class VirtualFileSystem:
             
         del parent["children"][name]
         return True, ""
+
+    def chmod(self, path: str, mode: str = "+x") -> Tuple[bool, str]:
+        target = self.resolve_path(path)
+        node = self._get_node(target)
+        if not node:
+            return False, f"chmod: cannot access '{path}': No such file or directory"
+        node["perm"] = "755" if "+x" in mode else "644"
+        return True, ""

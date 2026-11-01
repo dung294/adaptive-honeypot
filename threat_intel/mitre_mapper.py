@@ -17,6 +17,9 @@ class MitreMapper:
         (r"\b(python3?|perl|bash|sh|zsh|php)\b", "T1059.004", "Unix Shell", "Execution"),
         (r"\b(crontab|/etc/cron)\b", "T1053.003", "Cron", "Persistence"),
         (r"\b(rm\s+-rf?|history\s+-c)\b", "T1070.004", "File Deletion / Indicator Removal", "Defense Evasion"),
+        (r"\b(sudo\s+-l)\b", "T1548.003", "Sudo Caching & Priv Discovery", "Privilege Escalation"),
+        (r"\b(sudo\s+(su|bash|sh|find|-i)|su\b)", "T1548.003", "Sudo Privilege Escalation", "Privilege Escalation"),
+        (r"\b(find\s+.*-perm\s+.*(u=s|4000))\b", "T1548.001", "Setuid and Setgid", "Privilege Escalation"),
     ]
 
     @classmethod

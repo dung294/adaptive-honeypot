@@ -74,6 +74,13 @@ class TerminalSession:
                                 self.channel.send("logout\r\n")
                                 return
 
+                            # Nếu hacker leo thang đặc quyền thành công giả lập
+                            if stdout == "__ESCALATE_ROOT__":
+                                self.username = "root"
+                                self.vfs.user = "root"
+                                self.vfs.cwd = "/root"
+                                stdout = ""
+
                             # Gửi phản hồi stdout về terminal hacker
                             formatted_stdout = stdout.replace("\n", "\r\n")
                             self.channel.send(formatted_stdout)

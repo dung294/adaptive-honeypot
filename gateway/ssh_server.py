@@ -8,9 +8,10 @@ from threat_intel.logger import HoneypotLogger
 from config import SSH_HOST, SSH_PORT, SSH_BANNER, SERVER_KEY_PATH
 
 class HoneypotSSHInterface(paramiko.ServerInterface):
-    def __init__(self, client_ip: str, client_port: int):
+    def __init__(self, client_ip: str, client_port: int, logger: HoneypotLogger):
         self.client_ip = client_ip
         self.client_port = client_port
+        self.logger = logger
         self.username = "root"
         self.event = threading.Event()
 
@@ -22,6 +23,10 @@ class HoneypotSSHInterface(paramiko.ServerInterface):
     def check_auth_password(self, username, password):
         self.username = username
         print(f"[*] [AUTH] IP: {self.client_ip}:{self.client_port} | User: '{username}' | Pass: '{password}' -> GRANTED")
+        try:
+            self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password)
+        except Exception:
+            pass
         return paramiko.AUTH_SUCCESSFUL
 
     def check_auth_none(self, username):
@@ -61,7 +66,7 @@ class SSHGatewayServer:
             transport.local_version = SSH_BANNER
             transport.add_server_key(self.host_key)
             
-            server_interface = HoneypotSSHInterface(client_ip, client_port)
+            server_interface = HoneypotSSHInterface(client_ip, client_port, self.logger)
             transport.start_server(server=server_interface)
             
             channel = transport.accept(20)

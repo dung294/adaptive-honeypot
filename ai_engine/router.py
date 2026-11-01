@@ -123,6 +123,48 @@ class CommandRouter:
                 return (err + "\n" if err else ""), "VFS", latency
             return "rm: missing operand\n", "VFS", 0.5
 
+        elif base_cmd == "chmod":
+            target = tokens[-1] if len(tokens) > 1 else ""
+            mode = tokens[1] if len(tokens) > 2 else "+x"
+            ok, err = self.vfs.chmod(target, mode)
+            latency = (time.perf_counter() - start_time) * 1000
+            return (err + "\n" if err else ""), "VFS", latency
+
+        elif base_cmd == "wget":
+            url_tokens = [t for t in tokens[1:] if not t.startswith("-")]
+            target_url = url_tokens[0] if url_tokens else "http://malware.c2/payload.sh"
+            filename = target_url.split("/")[-1] or "downloaded_file"
+            simulated_payload = f"#!/bin/bash\n# Captured remote payload from {target_url}\n# Dropped at: {time.time()}\necho 'Malware payload simulated'\n"
+            self.vfs.write_file(filename, simulated_payload)
+            latency = (time.perf_counter() - start_time) * 1000
+            out = (
+                f"--2026-11-01 16:50:00--  {target_url}\n"
+                f"Resolving c2 host... 185.220.101.5\n"
+                f"Connecting to 185.220.101.5:80... connected.\n"
+                f"HTTP request sent, awaiting response... 200 OK\n"
+                f"Length: {len(simulated_payload)} [text/x-sh]\n"
+                f"Saving to: '{filename}'\n\n"
+                f"{filename}        100%[===================>]  {len(simulated_payload)}  --.-KB/s    in 0.001s\n\n"
+                f"2026-11-01 16:50:00 - '{filename}' saved [{len(simulated_payload)}/{len(simulated_payload)}]\n"
+            )
+            return out, "DECEPTION_DOWNLOAD", latency
+
+        elif clean_cmd.startswith("sudo -l"):
+            latency = (time.perf_counter() - start_time) * 1000
+            out = (
+                f"Matching Defaults entries for {user} on {self.vfs.hostname}:\n"
+                f"    env_reset, mail_badpass\n\n"
+                f"User {user} may run the following commands on {self.vfs.hostname}:\n"
+                f"    (ALL : ALL) NOPASSWD: /usr/bin/find\n"
+            )
+            return out, "VFS_PRIV_ESC_BAIT", latency
+
+        elif clean_cmd in ["sudo su", "sudo -i", "sudo bash", "sudo sh", "su"] or "sudo find" in clean_cmd:
+            latency = (time.perf_counter() - start_time) * 1000
+            self.vfs.user = "root"
+            self.vfs.cwd = "/root"
+            return "__ESCALATE_ROOT__", "VFS_PRIV_ESC", latency
+
         elif base_cmd in ["exit", "logout"]:
             latency = (time.perf_counter() - start_time) * 1000
             return "__EXIT__", "VFS", latency
