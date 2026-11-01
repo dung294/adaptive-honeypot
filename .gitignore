@@ -21,6 +21,7 @@ attack_lab_generator.py
 
 # Tài liệu PDF & Script sinh báo cáo
 *.pdf
+*.docx
 build_hardcore_pdf.py
 
 # Mẫu mã độc thu thập (Quarantine)
