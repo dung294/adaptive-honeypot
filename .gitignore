@@ -40,3 +40,5 @@ logs/*
 *.swo
 
 build_full_academic_docs.py
+
+sync_to_vm.py
