@@ -38,3 +38,5 @@ logs/*
 .idea/
 *.swp
 *.swo
+
+build_full_academic_docs.py
