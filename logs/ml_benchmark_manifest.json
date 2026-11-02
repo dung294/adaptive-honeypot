@@ -1,0 +1,228 @@
+{
+  "dataset_id": "DATASET-OOD-ML-HONEYPOT-2026",
+  "batch_id": "BATCH-20261102-BENCHMARK-01",
+  "created_at": "2026-11-02T05:12:45.041313+00:00",
+  "target_system": "Adaptive Honeypot Two-Tier Architecture (Stateful SSH + DVWA)",
+  "total_events": 10000,
+  "total_sessions": 1811,
+  "unique_source_ips": 1665,
+  "runs": [
+    {
+      "run_id": "RUN-20261102-BATCH01-BOTNET",
+      "campaign_id": "CAMP-2026-BOTNET-AUTO",
+      "weight": 0.35
+    },
+    {
+      "run_id": "RUN-20261102-BATCH02-WEBPEN",
+      "campaign_id": "CAMP-2026-WEB-PENTEST",
+      "weight": 0.35
+    },
+    {
+      "run_id": "RUN-20261102-BATCH03-HUMANAPT",
+      "campaign_id": "CAMP-2026-HUMAN-APT",
+      "weight": 0.2
+    },
+    {
+      "run_id": "RUN-20261102-BATCH04-INSIDER",
+      "campaign_id": "CAMP-2026-LATERAL-INSIDER",
+      "weight": 0.1
+    }
+  ],
+  "campaigns": {
+    "CAMP-2026-BOTNET-AUTO": {
+      "name": "Automated Botnet Commodity Sweeps",
+      "description": "Chiến dịch botnet tự động quét diện rộng, dò mật khẩu mặc định và tải malware đào coin (XMRig/Mirai).",
+      "threat_actor_type": "Automated Botnet / Script Kiddie",
+      "target_surface": [
+        "SSH",
+        "HTTP"
+      ]
+    },
+    "CAMP-2026-WEB-PENTEST": {
+      "name": "Targeted Web Application Fuzzing & Exploitation",
+      "description": "Chiến dịch kiểm thử xâm nhập web có chủ đích, khai thác lỗ hổng OWASP Top 10 (SQLi, CMDi, LFI, XSS).",
+      "threat_actor_type": "External Penetration Tester / Web Threat Actor",
+      "target_surface": [
+        "HTTP"
+      ]
+    },
+    "CAMP-2026-HUMAN-APT": {
+      "name": "Interactive Hands-On-Keyboard Targeted Intrusion",
+      "description": "Kẻ tấn công con người điều khiển shell trực tiếp sau khi chiếm quyền truy cập, leo thang qua GTFOBins.",
+      "threat_actor_type": "Advanced Persistent Threat (APT) / Hands-on Operator",
+      "target_surface": [
+        "SSH"
+      ]
+    },
+    "CAMP-2026-LATERAL-INSIDER": {
+      "name": "Internal Lateral Pivot & Reconnaissance",
+      "description": "Mô phỏng hành vi tấn công nội bộ (Insider) hoặc bước di chuyển ngang sau khi thâm nhập máy trạm LAN.",
+      "threat_actor_type": "Malicious Insider / Lateral Pivot",
+      "target_surface": [
+        "SSH",
+        "HTTP"
+      ]
+    }
+  },
+  "scenarios": {
+    "SCN-SSH-BRUTE": {
+      "campaign_id": "CAMP-2026-BOTNET-AUTO",
+      "name": "SSH Password Guessing & Dictionary Stuffing",
+      "expected_tactic": "Credential Access",
+      "expected_technique": "T1110.001 - Brute Force: Password Guessing",
+      "attack_category": "Brute-Force",
+      "binary_label": 1
+    },
+    "SCN-SSH-SYSRECON": {
+      "campaign_id": "CAMP-2026-HUMAN-APT",
+      "name": "Multi-Step System & Environment Discovery",
+      "expected_tactic": "Discovery",
+      "expected_technique": "T1082 - System Information Discovery",
+      "attack_category": "Discovery",
+      "binary_label": 1
+    },
+    "SCN-SSH-NETRECON": {
+      "campaign_id": "CAMP-2026-LATERAL-INSIDER",
+      "name": "Internal Network & Process Mapping",
+      "expected_tactic": "Discovery",
+      "expected_technique": "T1049 - System Network Connections Discovery",
+      "attack_category": "Discovery",
+      "binary_label": 1
+    },
+    "SCN-SSH-GTFOBINS": {
+      "campaign_id": "CAMP-2026-HUMAN-APT",
+      "name": "Privilege Escalation via GTFOBins & Sudo Abuse",
+      "expected_tactic": "Privilege Escalation",
+      "expected_technique": "T1548.003 - Abuse Elevation Control Mechanism: Sudo Caching",
+      "attack_category": "Privilege-Escalation",
+      "binary_label": 1
+    },
+    "SCN-SSH-C2STAGE": {
+      "campaign_id": "CAMP-2026-BOTNET-AUTO",
+      "name": "C2 Ingress Tool Transfer & Staging",
+      "expected_tactic": "Command and Control",
+      "expected_technique": "T1105 - Ingress Tool Transfer",
+      "attack_category": "C2-Malware",
+      "binary_label": 1
+    },
+    "SCN-SSH-DEFENSE-EVASION": {
+      "campaign_id": "CAMP-2026-HUMAN-APT",
+      "name": "Indicator Removal & History Clearing",
+      "expected_tactic": "Defense Evasion",
+      "expected_technique": "T1070.003 - Indicator Removal: Clear Command History",
+      "attack_category": "Defense-Evasion",
+      "binary_label": 1
+    },
+    "SCN-SSH-PORT-SCAN": {
+      "campaign_id": "CAMP-2026-BOTNET-AUTO",
+      "name": "Network Service Discovery / Banner Grab",
+      "expected_tactic": "Discovery",
+      "expected_technique": "T1046 - Network Service Discovery",
+      "attack_category": "Port-Scan",
+      "binary_label": 1
+    },
+    "SCN-WEB-SQLI-ADVANCED": {
+      "campaign_id": "CAMP-2026-WEB-PENTEST",
+      "name": "SQL Injection Data Extraction & Blind Probes",
+      "expected_tactic": "Initial Access",
+      "expected_technique": "T1190 - Exploit Public-Facing Application: SQL Injection",
+      "attack_category": "Web-Exploit-SQLi",
+      "binary_label": 1
+    },
+    "SCN-WEB-CMDi-CHAIN": {
+      "campaign_id": "CAMP-2026-WEB-PENTEST",
+      "name": "OS Command Injection & Reverse Shell Staging",
+      "expected_tactic": "Execution",
+      "expected_technique": "T1059.004 - Command and Scripting Interpreter: Unix Shell",
+      "attack_category": "Web-Exploit-CMDi",
+      "binary_label": 1
+    },
+    "SCN-WEB-LFI-WRAPPER": {
+      "campaign_id": "CAMP-2026-WEB-PENTEST",
+      "name": "Local File Inclusion & Traversal Bypass",
+      "expected_tactic": "Credential Access",
+      "expected_technique": "T1552.001 - Unsecured Credentials: Local File Inclusion",
+      "attack_category": "Web-Exploit-LFI",
+      "binary_label": 1
+    },
+    "SCN-WEB-XSS-EXFIL": {
+      "campaign_id": "CAMP-2026-WEB-PENTEST",
+      "name": "Cross-Site Scripting Injection",
+      "expected_tactic": "Execution",
+      "expected_technique": "T1059.007 - Command and Scripting Interpreter: JavaScript",
+      "attack_category": "Web-Exploit-XSS",
+      "binary_label": 1
+    },
+    "SCN-WEB-WEBSHELL-UPLOAD": {
+      "campaign_id": "CAMP-2026-WEB-PENTEST",
+      "name": "Web Shell Upload & Component Staging",
+      "expected_tactic": "Persistence",
+      "expected_technique": "T1505.003 - Server Software Component: Web Shell",
+      "attack_category": "Web-Exploit-Upload",
+      "binary_label": 1
+    },
+    "SCN-WEB-SCANNER-SWEEP": {
+      "campaign_id": "CAMP-2026-BOTNET-AUTO",
+      "name": "Automated Scanner Surface Sweep (Nikto/SQLMap)",
+      "expected_tactic": "Discovery",
+      "expected_technique": "T1046 - Network Service Discovery: Automated Scanner",
+      "attack_category": "Web-Scanner",
+      "binary_label": 1
+    },
+    "SCN-WEB-BENIGN-TRAFFIC": {
+      "campaign_id": "CAMP-2026-LATERAL-INSIDER",
+      "name": "Benign Administrative Browsing & Health Check",
+      "expected_tactic": "Normal-Operation",
+      "expected_technique": "Normal Traffic",
+      "attack_category": "Benign",
+      "binary_label": 0
+    }
+  },
+  "statistics": {
+    "protocols": {
+      "HTTP": 4063,
+      "SSH": 5937
+    },
+    "binary_labels": {
+      "Benign (0)": 300,
+      "Malicious (1)": 9700
+    },
+    "attack_categories": {
+      "Web-Scanner": 1186,
+      "Benign": 300,
+      "Brute-Force": 1337,
+      "C2-Malware": 315,
+      "Initial-Access": 357,
+      "Discovery": 1867,
+      "Privilege-Escalation": 901,
+      "Defense-Evasion": 803,
+      "Execution": 357,
+      "Web-Exploit-LFI": 533,
+      "Web-Exploit-CMDi": 632,
+      "Web-Exploit-Upload": 247,
+      "Web-Exploit-SQLi": 865,
+      "Web-Exploit-XSS": 300
+    },
+    "scenarios_breakdown": {
+      "SCN-WEB-SCANNER-SWEEP": 1186,
+      "SCN-WEB-BENIGN-TRAFFIC": 300,
+      "SCN-SSH-BRUTE": 1337,
+      "SCN-SSH-C2STAGE": 315,
+      "SCN-SSH-SYSRECON": 1783,
+      "SCN-SSH-GTFOBINS": 901,
+      "SCN-SSH-DEFENSE-EVASION": 1071,
+      "SCN-WEB-LFI-WRAPPER": 533,
+      "SCN-WEB-CMDi-CHAIN": 632,
+      "SCN-WEB-WEBSHELL-UPLOAD": 247,
+      "SCN-WEB-SQLI-ADVANCED": 865,
+      "SCN-SSH-NETRECON": 530,
+      "SCN-WEB-XSS-EXFIL": 300
+    },
+    "campaigns_breakdown": {
+      "CAMP-2026-BOTNET-AUTO": 2838,
+      "CAMP-2026-LATERAL-INSIDER": 830,
+      "CAMP-2026-HUMAN-APT": 3755,
+      "CAMP-2026-WEB-PENTEST": 2577
+    }
+  }
+}
