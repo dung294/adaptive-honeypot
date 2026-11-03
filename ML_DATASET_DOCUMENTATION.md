@@ -1,7 +1,7 @@
 # BÁO CÁO MÔ TẢ TẬP DỮ LIỆU LOG HONEYPOT (ML BENCHMARK BATCH)
 **Phục vụ:** Nghiên cứu và Huấn luyện / Đánh giá mô hình Machine Learning phát hiện & phân loại tấn công mạng  
 **Hệ thống thu thập:** Adaptive Honeypot Deception Engine v2.1.0 (Stateful VFS SSH + Dockerized Web DVWA)  
-**Thời điểm xuất:** 2026-11-02T05:12:45.041313+00:00  
+**Thời điểm xuất:** 2026-11-03T04:08:18.092596+00:00  
 **Batch ID:** `BATCH-20261102-BENCHMARK-01`
 
 ---
@@ -9,14 +9,14 @@
 ## 1. Tổng quan Tập Dữ liệu (Dataset Overview)
 - **Định dạng dữ liệu:** JSON Lines (`.jsonl`) nguyên bản (Raw Event Stream), mỗi dòng là một sự kiện độc lập.
 - **Tổng số sự kiện (Events):** `10,000` sự kiện.
-- **Tổng số phiên (Sessions):** `1,811` phiên hoàn chỉnh có thể xâu chuỗi qua `session_id`.
-- **Số lượng IP duy nhất (Unique Attacker IPs):** `1,665` IP (bao gồm dải ISP Việt Nam, Cloud quốc tế, Tor/Proxy và mạng nội bộ).
+- **Tổng số phiên (Sessions):** `1,793` phiên hoàn chỉnh có thể xâu chuỗi qua `session_id`.
+- **Số lượng IP duy nhất (Unique Attacker IPs):** `1,622` IP (bao gồm dải ISP Việt Nam, Cloud quốc tế, Tor/Proxy và mạng nội bộ).
 - **Phân bổ Nhãn Nhị phân (Binary Classification):**
-  - **Malicious (Tấn công - Nhãn 1):** `9,700` sự kiện
-  - **Benign (Bình thường / Hợp lệ - Nhãn 0):** `300` sự kiện
+  - **Malicious (Tấn công - Nhãn 1):** `9,781` sự kiện
+  - **Benign (Bình thường / Hợp lệ - Nhãn 0):** `219` sự kiện
 - **Phân bổ Giao thức:**
-  - `HTTP` (Web DVWA Port 80): `4,063` sự kiện
-  - `SSH` (Honeypot Terminal Port 2222): `5,937` sự kiện
+  - `HTTP` (Web DVWA Port 80): `4,010` sự kiện
+  - `SSH` (Honeypot Terminal Port 2222): `5,990` sự kiện
 
 ---
 

@@ -1,31 +1,57 @@
 {
   "dataset_id": "DATASET-OOD-ML-HONEYPOT-2026",
   "batch_id": "BATCH-20261102-BENCHMARK-01",
-  "created_at": "2026-11-02T05:12:45.041313+00:00",
+  "created_at": "2026-11-03T04:08:18.092596+00:00",
   "target_system": "Adaptive Honeypot Two-Tier Architecture (Stateful SSH + DVWA)",
+  "data_provenance": {
+    "collection_type": "Controlled Semi-Synthetic Testbed Simulation",
+    "labeling_method": "Deterministic Design-Time Oracle (MITRE ATT&CK for Enterprise)",
+    "labeling_granularity": "Event-level actions with session correlation (scenario_id per event step)",
+    "reproducibility": "Fully deterministic execution via generate_ml_benchmark_batch.py"
+  },
   "total_events": 10000,
-  "total_sessions": 1811,
-  "unique_source_ips": 1665,
+  "total_sessions": 1793,
+  "unique_source_ips": 1622,
   "runs": [
     {
       "run_id": "RUN-20261102-BATCH01-BOTNET",
       "campaign_id": "CAMP-2026-BOTNET-AUTO",
-      "weight": 0.35
+      "session_sampling_weight": 0.35,
+      "actual_sessions": 584,
+      "session_ratio": 0.3257,
+      "actual_events": 2637,
+      "event_ratio": 0.2637,
+      "avg_events_per_session": 4.52
     },
     {
       "run_id": "RUN-20261102-BATCH02-WEBPEN",
       "campaign_id": "CAMP-2026-WEB-PENTEST",
-      "weight": 0.35
+      "session_sampling_weight": 0.35,
+      "actual_sessions": 670,
+      "session_ratio": 0.3737,
+      "actual_events": 2663,
+      "event_ratio": 0.2663,
+      "avg_events_per_session": 3.97
     },
     {
       "run_id": "RUN-20261102-BATCH03-HUMANAPT",
       "campaign_id": "CAMP-2026-HUMAN-APT",
-      "weight": 0.2
+      "session_sampling_weight": 0.2,
+      "actual_sessions": 377,
+      "session_ratio": 0.2103,
+      "actual_events": 3987,
+      "event_ratio": 0.3987,
+      "avg_events_per_session": 10.58
     },
     {
       "run_id": "RUN-20261102-BATCH04-INSIDER",
       "campaign_id": "CAMP-2026-LATERAL-INSIDER",
-      "weight": 0.1
+      "session_sampling_weight": 0.1,
+      "actual_sessions": 162,
+      "session_ratio": 0.0904,
+      "actual_events": 713,
+      "event_ratio": 0.0713,
+      "avg_events_per_session": 4.4
     }
   ],
   "campaigns": {
@@ -180,49 +206,49 @@
   },
   "statistics": {
     "protocols": {
-      "HTTP": 4063,
-      "SSH": 5937
+      "HTTP": 4010,
+      "SSH": 5990
     },
     "binary_labels": {
-      "Benign (0)": 300,
-      "Malicious (1)": 9700
+      "Benign (0)": 219,
+      "Malicious (1)": 9781
     },
     "attack_categories": {
-      "Web-Scanner": 1186,
-      "Benign": 300,
-      "Brute-Force": 1337,
-      "C2-Malware": 315,
-      "Initial-Access": 357,
-      "Discovery": 1867,
-      "Privilege-Escalation": 901,
-      "Defense-Evasion": 803,
-      "Execution": 357,
-      "Web-Exploit-LFI": 533,
-      "Web-Exploit-CMDi": 632,
-      "Web-Exploit-Upload": 247,
-      "Web-Exploit-SQLi": 865,
-      "Web-Exploit-XSS": 300
+      "Web-Exploit-SQLi": 932,
+      "Web-Scanner": 1128,
+      "Web-Exploit-LFI": 420,
+      "Brute-Force": 1245,
+      "C2-Malware": 264,
+      "Benign": 219,
+      "Discovery": 1948,
+      "Defense-Evasion": 839,
+      "Initial-Access": 377,
+      "Privilege-Escalation": 940,
+      "Execution": 377,
+      "Web-Exploit-Upload": 334,
+      "Web-Exploit-CMDi": 736,
+      "Web-Exploit-XSS": 241
     },
     "scenarios_breakdown": {
-      "SCN-WEB-SCANNER-SWEEP": 1186,
-      "SCN-WEB-BENIGN-TRAFFIC": 300,
-      "SCN-SSH-BRUTE": 1337,
-      "SCN-SSH-C2STAGE": 315,
-      "SCN-SSH-SYSRECON": 1783,
-      "SCN-SSH-GTFOBINS": 901,
-      "SCN-SSH-DEFENSE-EVASION": 1071,
-      "SCN-WEB-LFI-WRAPPER": 533,
-      "SCN-WEB-CMDi-CHAIN": 632,
-      "SCN-WEB-WEBSHELL-UPLOAD": 247,
-      "SCN-WEB-SQLI-ADVANCED": 865,
-      "SCN-SSH-NETRECON": 530,
-      "SCN-WEB-XSS-EXFIL": 300
+      "SCN-WEB-SQLI-ADVANCED": 932,
+      "SCN-WEB-SCANNER-SWEEP": 1128,
+      "SCN-WEB-LFI-WRAPPER": 420,
+      "SCN-SSH-BRUTE": 1245,
+      "SCN-SSH-C2STAGE": 264,
+      "SCN-WEB-BENIGN-TRAFFIC": 219,
+      "SCN-SSH-NETRECON": 494,
+      "SCN-SSH-SYSRECON": 1916,
+      "SCN-SSH-GTFOBINS": 940,
+      "SCN-SSH-DEFENSE-EVASION": 1131,
+      "SCN-WEB-WEBSHELL-UPLOAD": 334,
+      "SCN-WEB-CMDi-CHAIN": 736,
+      "SCN-WEB-XSS-EXFIL": 241
     },
     "campaigns_breakdown": {
-      "CAMP-2026-BOTNET-AUTO": 2838,
-      "CAMP-2026-LATERAL-INSIDER": 830,
-      "CAMP-2026-HUMAN-APT": 3755,
-      "CAMP-2026-WEB-PENTEST": 2577
+      "CAMP-2026-WEB-PENTEST": 2663,
+      "CAMP-2026-BOTNET-AUTO": 2637,
+      "CAMP-2026-LATERAL-INSIDER": 713,
+      "CAMP-2026-HUMAN-APT": 3987
     }
   }
 }

@@ -399,16 +399,49 @@ class MLBenchmarkGenerator:
         # Sắp xếp theo dòng thời gian chuẩn xác
         self.raw_events.sort(key=lambda x: x["timestamp"])
 
+        # Thống kê chi tiết theo từng run
+        session_to_run = {}
+        events_per_run = Counter()
+        for ev in self.raw_events:
+            session_to_run[ev["session_id"]] = ev["run_id"]
+            events_per_run[ev["run_id"]] += 1
+
+        sessions_per_run = Counter(session_to_run.values())
+        total_sess = len(session_to_run)
+        total_evs = len(self.raw_events)
+
+        enriched_runs = []
+        for r in runs:
+            r_id = r["run_id"]
+            sess_cnt = sessions_per_run.get(r_id, 0)
+            ev_cnt = events_per_run.get(r_id, 0)
+            enriched_runs.append({
+                "run_id": r_id,
+                "campaign_id": r["campaign_id"],
+                "session_sampling_weight": r["weight"],
+                "actual_sessions": sess_cnt,
+                "session_ratio": round(sess_cnt / max(1, total_sess), 4),
+                "actual_events": ev_cnt,
+                "event_ratio": round(ev_cnt / max(1, total_evs), 4),
+                "avg_events_per_session": round(ev_cnt / max(1, sess_cnt), 2)
+            })
+
         # Tạo manifest metadata
         manifest = {
             "dataset_id": "DATASET-OOD-ML-HONEYPOT-2026",
             "batch_id": "BATCH-20261102-BENCHMARK-01",
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "target_system": "Adaptive Honeypot Two-Tier Architecture (Stateful SSH + DVWA)",
+            "data_provenance": {
+                "collection_type": "Controlled Semi-Synthetic Testbed Simulation",
+                "labeling_method": "Deterministic Design-Time Oracle (MITRE ATT&CK for Enterprise)",
+                "labeling_granularity": "Event-level actions with session correlation (scenario_id per event step)",
+                "reproducibility": "Fully deterministic execution via generate_ml_benchmark_batch.py"
+            },
             "total_events": self.stats["total_events"],
-            "total_sessions": self.stats["total_sessions"],
+            "total_sessions": total_sess,
             "unique_source_ips": len(set(e["source_ip"] for e in self.raw_events)),
-            "runs": runs,
+            "runs": enriched_runs,
             "campaigns": CAMPAIGNS_DEF,
             "scenarios": SCENARIOS_DEF,
             "statistics": {
@@ -968,7 +1001,7 @@ class MLBenchmarkGenerator:
 # XUẤT TÀI LIỆU HỖ TRỢ LUẬN VĂN (DATASET DOCUMENTATION)
 # =====================================================================
 def generate_dataset_doc(manifest: Dict[str, Any]):
-    doc_content = f"""# BÁO CÁO MÔ TẢ TẬP DỮ LIỆU LOG HONEYPOT (ML BENCHMARK BATCH)
+    doc_content = rf"""# BÁO CÁO MÔ TẢ TẬP DỮ LIỆU LOG HONEYPOT (ML BENCHMARK BATCH)
 **Phục vụ:** Nghiên cứu và Huấn luyện / Đánh giá mô hình Machine Learning phát hiện & phân loại tấn công mạng  
 **Hệ thống thu thập:** Adaptive Honeypot Deception Engine v2.1.0 (Stateful VFS SSH + Dockerized Web DVWA)  
 **Thời điểm xuất:** {manifest['created_at']}  
