@@ -11,8 +11,9 @@ import paramiko
 import json
 from pathlib import Path
 
-def test_wrong_password_rejected():
-    host = "127.0.0.1"
+DEFAULT_HOST = "192.168.101.218"
+
+def test_wrong_password_rejected(host=DEFAULT_HOST):
     port = 2222
     username = "root"
     wrong_password = "this_is_a_completely_wrong_password_9999"
@@ -32,8 +33,7 @@ def test_wrong_password_rejected():
     except Exception as e:
         print(f"[TEST 1 Kết quả]: {e}")
 
-def test_attack_simulation():
-    host = "127.0.0.1"
+def test_attack_simulation(host=DEFAULT_HOST):
     port = 2222
     username = "root"
     # Mật khẩu hợp lệ nằm trong HONEYPOT_ALLOWED_PASSWORDS
@@ -80,8 +80,7 @@ def test_attack_simulation():
     except Exception as e:
         print(f"[TEST] [LỖI] Không thể kết nối hoặc thực thi: {e}")
 
-def test_admin_control():
-    host = "127.0.0.1"
+def test_admin_control(host=DEFAULT_HOST):
     port = 2222
     username = "admin"
     password = "admin123"

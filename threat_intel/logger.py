@@ -110,26 +110,7 @@ class HoneypotLogger:
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         session_id = str(uuid.uuid4())
         
-        if status == "Immediate_Exit":
-            mitre_block = {
-                "tactic_id": "TA0007",
-                "tactic_name": "Discovery",
-                "technique_id": "T1046",
-                "technique_name": "Network Service Discovery",
-                "subtechnique_id": None,
-                "scenario": "Network Service Discovery: Port Scan",
-                "severity": "Low"
-            }
-        else:
-            mitre_block = {
-                "tactic_id": "TA0007",
-                "tactic_name": "Discovery",
-                "technique_id": "T1046",
-                "technique_name": "Network Service Discovery",
-                "subtechnique_id": None,
-                "scenario": "Initial Connection Probe",
-                "severity": "Info"
-            }
+        mitre_block = MitreMapper.map_connection(status)
 
         event_record = {
             "event_key": f"{now}:{session_id}:Connection",
@@ -140,6 +121,7 @@ class HoneypotLogger:
             "session_id": session_id,
             "event_status": status,
             "message": f"SSH Raw Connection {status}",
+            "macro_class": mitre_block.get("macro_class", "Port Scan & Connection Probe"),
             "mitre_attack": mitre_block,
             "mitre_tactic": mitre_block["tactic_name"],
             "mitre_technique_id": mitre_block["technique_id"],
@@ -159,8 +141,8 @@ class HoneypotLogger:
             sess = self._get_or_create_session(session_id, source_ip, source_port)
             sess["threat_analysis"]["termination"] = "Immediate_Exit"
             sess["threat_analysis"]["scenario"] = "Port Scan & Connection Probe"
-            sess["threat_analysis"]["mitre_tactics"].add("TA0007 - Discovery")
-            sess["threat_analysis"]["mitre_techniques"].add("T1046 - Network Service Discovery")
+            sess["threat_analysis"]["mitre_tactics"].add(f"{mitre_block['tactic_id']} - {mitre_block['tactic_name']}")
+            sess["threat_analysis"]["mitre_techniques"].add(f"{mitre_block['technique_id']} - {mitre_block['technique_name']}")
             self._flush_session_to_json(session_id)
 
         return event_record
@@ -181,26 +163,7 @@ class HoneypotLogger:
             session_id = str(uuid.uuid4())
         event_key = f"{now}:{session_id}:Auth"
         
-        if success:
-            mitre_block = {
-                "tactic_id": "TA0001",
-                "tactic_name": "Initial Access",
-                "technique_id": "T1078.003",
-                "technique_name": "Valid Accounts: Local Accounts",
-                "subtechnique_id": "T1078.003",
-                "scenario": "Valid Local Account Access",
-                "severity": "Medium"
-            }
-        else:
-            mitre_block = {
-                "tactic_id": "TA0006",
-                "tactic_name": "Credential Access",
-                "technique_id": "T1110",
-                "technique_name": "Brute Force: Password Guessing",
-                "subtechnique_id": "T1110.001",
-                "scenario": "SSH Password Guessing (Brute Force)",
-                "severity": "High"
-            }
+        mitre_block = MitreMapper.map_auth(success, username, password)
 
         event_record = {
             "event_key": event_key,
@@ -215,6 +178,7 @@ class HoneypotLogger:
             "is_admin": is_admin,
             "event_status": "Auth_Success" if success else "Auth_Failed",
             "message": f"SSH Auth {'Success' if success else 'Failed'} for user '{username}'",
+            "macro_class": mitre_block.get("macro_class", "SSH Password Guessing"),
             "mitre_attack": mitre_block,
             "mitre_tactic": mitre_block["tactic_name"],
             "mitre_technique_id": mitre_block["technique_id"],
@@ -282,6 +246,7 @@ class HoneypotLogger:
             "command_output": clean_output,
             "handler_type": handler_type,
             "latency_ms": round(latency_ms, 2),
+            "macro_class": mitre_block.get("macro_class", "Command Execution & Scripting"),
             "mitre_attack": mitre_block,
             "mitre_tactic": mitre_block["tactic_name"],
             "mitre_technique_id": mitre_block["technique_id"],

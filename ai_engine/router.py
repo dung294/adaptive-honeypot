@@ -394,6 +394,86 @@ class CommandRouter:
             latency = (time.perf_counter() - start_time) * 1000
             return "\033[2J\033[H", "VFS", latency
 
+        # =====================================================================
+        # PERSISTENCE & USER MANAGEMENT FAST-PATH
+        # =====================================================================
+        elif base_cmd in ("useradd", "adduser"):
+            latency = (time.perf_counter() - start_time) * 1000
+            if effective_user != "root":
+                return f"{base_cmd}: Permission denied.\n", "VFS", latency
+            new_user = [t for t in tokens[1:] if not t.startswith("-")]
+            if new_user:
+                username = new_user[-1]
+                # Thêm vào /etc/passwd ảo
+                self.vfs.write_file("/etc/passwd", f"{username}:x:1002:1002::/home/{username}:/bin/bash\n", append=True)
+                return "", "VFS", latency
+            return f"usage: {base_cmd} [options] LOGIN\n", "VFS", latency
+
+        # =====================================================================
+        # COLLECTION & ARCHIVING FAST-PATH
+        # =====================================================================
+        elif base_cmd == "tar":
+            latency = (time.perf_counter() - start_time) * 1000
+            # Giả lập tạo file nén trong VFS nếu có c (create) và f (file)
+            flags = tokens[1] if len(tokens) > 1 else ""
+            if "c" in flags and "f" in flags and len(tokens) >= 3:
+                archive_name = tokens[2]
+                self.vfs.write_file(archive_name, "[GZIP_TAR_ARCHIVE_BINARY_DATA]\n")
+                if "v" in flags:
+                    targets = tokens[3:] if len(tokens) > 3 else ["/etc/passwd"]
+                    return "\n".join(targets) + "\n", "VFS", latency
+                return "", "VFS", latency
+            return "", "VFS", latency
+
+        elif base_cmd == "zip":
+            latency = (time.perf_counter() - start_time) * 1000
+            targets = [t for t in tokens[1:] if not t.startswith("-")]
+            if targets:
+                zip_file = targets[0]
+                self.vfs.write_file(zip_file, "[PK_ZIP_BINARY_DATA]\n")
+                out = "\n".join([f"  adding: {t} (deflated 60%)" for t in targets[1:]]) + "\n" if len(targets) > 1 else f"  adding: data (stored 0%)\n"
+                return out, "VFS", latency
+            return "zip error: Nothing to do!\n", "VFS", latency
+
+        # =====================================================================
+        # COMMAND & CONTROL / REVERSE SHELL EMULATION
+        # =====================================================================
+        elif base_cmd in ("nc", "netcat", "ncat", "socat"):
+            latency = (time.perf_counter() - start_time) * 1000
+            # Giả lập kết nối mạng hoặc lỗi timeout chân thực
+            return "connect to foreign host: Connection refused\n", "VFS", latency
+
+        # =====================================================================
+        # LATERAL MOVEMENT / REMOTE CONNECTION EMULATION
+        # =====================================================================
+        elif base_cmd in ("ssh", "scp", "rsync"):
+            latency = (time.perf_counter() - start_time) * 1000
+            dest = [t for t in tokens[1:] if not t.startswith("-")]
+            target = dest[0] if dest else "192.168.1.1"
+            return f"ssh: connect to host {target.split('@')[-1].split(':')[0]} port 22: Connection refused\n", "VFS", latency
+
+        # =====================================================================
+        # IMPACT & PROCESS SABOTAGE EMULATION
+        # =====================================================================
+        elif base_cmd in ("kill", "killall", "pkill"):
+            latency = (time.perf_counter() - start_time) * 1000
+            return "", "VFS", latency
+
+        # =====================================================================
+        # BASE64 ENCODING / DECODING
+        # =====================================================================
+        elif base_cmd == "base64":
+            latency = (time.perf_counter() - start_time) * 1000
+            import base64
+            if "-d" in tokens or "--decode" in tokens:
+                payload = [t for t in tokens[1:] if not t.startswith("-")]
+                if payload:
+                    try:
+                        return base64.b64decode(payload[0]).decode("utf-8", errors="replace") + "\n", "VFS", latency
+                    except Exception:
+                        return "base64: invalid input\n", "VFS", latency
+            return "", "VFS", latency
+
         elif base_cmd == "cd":
             target = tokens[1] if len(tokens) > 1 else ""
             ok, err = self.vfs.cd(target)
