@@ -6,6 +6,20 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether, HRFlowable
 from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+# Đăng ký font TrueType Unicode hỗ trợ tiếng Việt đầy đủ 100%
+FONT_REGULAR = "C:/Windows/Fonts/arial.ttf"
+FONT_BOLD = "C:/Windows/Fonts/arialbd.ttf"
+FONT_ITALIC = "C:/Windows/Fonts/ariali.ttf"
+
+if os.path.exists(FONT_REGULAR):
+    pdfmetrics.registerFont(TTFont('Arial', FONT_REGULAR))
+if os.path.exists(FONT_BOLD):
+    pdfmetrics.registerFont(TTFont('Arial-Bold', FONT_BOLD))
+if os.path.exists(FONT_ITALIC):
+    pdfmetrics.registerFont(TTFont('Arial-Italic', FONT_ITALIC))
 
 PDF_OUTPUT_PATH = r"C:\Users\luunh\.gemini\antigravity\brain\b56f25d5-9336-4946-8eff-f0b94ac2a909\Bao_Cao_Tong_Quan_He_Thong_Honeypot_V2.pdf"
 
@@ -28,7 +42,7 @@ class NumberedCanvas(canvas.Canvas):
 
     def draw_page_decorations(self, page_count):
         self.saveState()
-        self.setFont("Helvetica", 8)
+        self.setFont("Arial", 8)
         self.setFillColor(colors.HexColor("#718096"))
         
         # Header (pages > 1)
@@ -60,13 +74,13 @@ def build_pdf():
 
     styles = getSampleStyleSheet()
     
-    # Custom styles
+    # Custom styles dùng Arial Unicode chuẩn tiếng Việt
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Heading1'],
-        fontName='Helvetica-Bold',
-        fontSize=22,
-        leading=26,
+        fontName='Arial-Bold',
+        fontSize=20,
+        leading=24,
         textColor=colors.HexColor("#1A365D"),
         spaceAfter=6
     )
@@ -74,9 +88,9 @@ def build_pdf():
     subtitle_style = ParagraphStyle(
         'DocSubTitle',
         parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=11,
-        leading=15,
+        fontName='Arial',
+        fontSize=10,
+        leading=14,
         textColor=colors.HexColor("#4A5568"),
         spaceAfter=15
     )
@@ -84,23 +98,23 @@ def build_pdf():
     h1_style = ParagraphStyle(
         'Heading1Custom',
         parent=styles['Heading1'],
-        fontName='Helvetica-Bold',
-        fontSize=14,
-        leading=18,
+        fontName='Arial-Bold',
+        fontSize=13,
+        leading=17,
         textColor=colors.HexColor("#2B6CB0"),
-        spaceBefore=14,
-        spaceAfter=8,
+        spaceBefore=12,
+        spaceAfter=6,
         keepWithNext=True
     )
 
     h2_style = ParagraphStyle(
         'Heading2Custom',
         parent=styles['Heading2'],
-        fontName='Helvetica-Bold',
-        fontSize=11,
-        leading=15,
+        fontName='Arial-Bold',
+        fontSize=10,
+        leading=14,
         textColor=colors.HexColor("#2D3748"),
-        spaceBefore=10,
+        spaceBefore=8,
         spaceAfter=4,
         keepWithNext=True
     )
@@ -108,11 +122,11 @@ def build_pdf():
     body_style = ParagraphStyle(
         'BodyCustom',
         parent=styles['Normal'],
-        fontName='Helvetica',
+        fontName='Arial',
         fontSize=9,
         leading=13,
         textColor=colors.HexColor("#2D3748"),
-        spaceAfter=6
+        spaceAfter=5
     )
 
     bullet_style = ParagraphStyle(
@@ -137,6 +151,7 @@ def build_pdf():
     table_cell = ParagraphStyle(
         'TableCell',
         parent=body_style,
+        fontName='Arial',
         fontSize=8,
         leading=11
     )
@@ -144,7 +159,7 @@ def build_pdf():
     table_header = ParagraphStyle(
         'TableHeader',
         parent=body_style,
-        fontName='Helvetica-Bold',
+        fontName='Arial-Bold',
         fontSize=8,
         leading=11,
         textColor=colors.white
@@ -209,7 +224,7 @@ def build_pdf():
         ],
         [
             Paragraph("<b>Interactive TUI Nano</b><br/>(nano_editor.py)", table_cell),
-            Paragraph("Trình soạn thảo GNU nano 6.2 chạy trên Alternate Screen Buffer (\x1b[?1049h), xử lý phím trực tiếp.", table_cell),
+            Paragraph("Trình soạn thảo GNU nano 6.2 chạy trên Alternate Screen Buffer (ESC[?1049h), xử lý phím trực tiếp.", table_cell),
             Paragraph("Hỗ trợ phím mũi tên, Ctrl+O lưu, Ctrl+X thoát, Ctrl+K/U cắt dán, kiểm tra phân quyền.", table_cell)
         ],
         [
@@ -298,7 +313,7 @@ def build_pdf():
         "Trình soạn thảo nano tích hợp giải quyết triệt để bài toán attacker mở file cấu hình hoặc tạo script:",
         body_style
     ))
-    elements.append(Paragraph("• <b>Alternate Screen Buffer:</b> Sử dụng escape code <code>\\x1b[?1049h</code> khi mở và <code>\\x1b[?1049l</code> khi đóng, giữ nguyên vẹn lịch sử màn hình terminal của attacker.", bullet_style))
+    elements.append(Paragraph("• <b>Alternate Screen Buffer:</b> Sử dụng escape code <code>ESC[?1049h</code> khi mở và <code>ESC[?1049l</code> khi đóng, giữ nguyên vẹn lịch sử màn hình terminal của attacker.", bullet_style))
     elements.append(Paragraph("• <b>Phím điều hướng & Chỉnh sửa:</b> Hỗ trợ đầy đủ 4 phím mũi tên, Home, End, PageUp, PageDown, Delete, Backspace, Enter ngắt dòng, chèn ký tự trực tiếp.", bullet_style))
     elements.append(Paragraph("• <b>Hệ thống phím tắt chuẩn GNU nano 6.2:</b>", bullet_style))
     elements.append(Paragraph("    - <b>Ctrl+O:</b> Lưu tệp vào VFS (hiển thị thông báo <i>[ Wrote X lines ]</i>).", bullet_style))
