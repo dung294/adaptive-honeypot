@@ -33,11 +33,14 @@ class TerminalSession:
     - Đồng bộ lịch sử ~/.bash_history và các file log auth.log, syslog, dpkg.log.
     """
 
-    def __init__(self, channel, client_ip: str, client_port: int, username: str, logger: HoneypotLogger, session_id: str = None):
+    def __init__(self, channel, client_ip: str, client_port: int, username: str, logger: HoneypotLogger, session_id: str = None, password: str = "123", term_width: int = 80, term_height: int = 24):
         self.channel = channel
         self.client_ip = client_ip
         self.client_port = client_port
         self.username = username or DEFAULT_USER
+        self.auth_password = password or "123"
+        self.term_width = term_width or 80
+        self.term_height = term_height or 24
         self.session_id = session_id or str(uuid.uuid4())
         self.logger = logger
         self.start_time = time.time()
@@ -53,6 +56,27 @@ class TerminalSession:
         self.vfs = VirtualFileSystem(hostname=HOSTNAME, user=self.username)
         self.llm_client = LLMClient()
         self.router = CommandRouter(self.vfs, self.llm_client)
+
+        # ĐẢM BẢO BẤT KỲ USER ĐĂNG NHẬP NÀO CŨNG TỒN TẠI VÀ CÓ QUYỀN SUDO
+        if self.username != "root":
+            if self.username not in self.router.state.users:
+                self.router.state.users[self.username] = {
+                    "uid": 1000,
+                    "gid": 1000,
+                    "home": f"/home/{self.username}",
+                    "shell": "/bin/bash",
+                    "password": self.auth_password
+                }
+                self.vfs.mkdir(f"/home/{self.username}", user="root")
+                self.vfs.chown(f"{self.username}:{self.username}", f"/home/{self.username}", user="root")
+            else:
+                self.router.state.users[self.username]["password"] = self.auth_password
+
+            # Luôn thêm user vào nhóm sudo
+            sudo_members = self.router.state.groups.setdefault("sudo", {}).setdefault("members", [])
+            if self.username not in sudo_members:
+                sudo_members.append(self.username)
+            self.router.state.save_state()
 
         # Đọc lịch sử ~/.bash_history nếu có
         self.history = self._load_user_history()
@@ -120,15 +144,10 @@ class TerminalSession:
         if (now - self.sudo_auth_timestamp) < self.sudo_auth_timeout:
             return True
 
-        # Kiểm tra sudoers (user phải thuộc nhóm sudo)
-        sudo_members = self.router.state.groups.get("sudo", {}).get("members", [])
+        # Đảm bảo user có mặt trong sudoers
+        sudo_members = self.router.state.groups.setdefault("sudo", {}).setdefault("members", [])
         if self.username not in sudo_members:
-            self.channel.send(f"{self.username} is not in the sudoers file.  This incident will be reported.\r\n")
-            # Ghi log auth
-            now_str = time.strftime("%b %d %H:%M:%S")
-            log_line = f"{now_str} {HOSTNAME} sudo: {self.username} : user NOT in sudoers ; TTY=pts/0 ; PWD={self.vfs.pwd()} ; USER=root\n"
-            self.vfs.write_file("/var/log/auth.log", log_line, append=True, user="root")
-            return False
+            sudo_members.append(self.username)
 
         # Thử nhập mật khẩu tối đa 3 lần
         for attempt in range(3):
@@ -136,7 +155,14 @@ class TerminalSession:
             if entered is None:
                 return False
 
-            if self.router.state.verify_password(self.username, entered):
+            # Chấp nhận mật khẩu đăng nhập, mật khẩu trong state hoặc mặc định 123
+            is_valid = (
+                entered == self.auth_password or
+                self.router.state.verify_password(self.username, entered) or
+                entered in ("123", "admin", "password", "root", "ubuntu")
+            )
+
+            if is_valid:
                 self.sudo_auth_timestamp = time.time()
                 # Ghi log auth thành công
                 now_str = time.strftime("%b %d %H:%M:%S")
@@ -350,7 +376,14 @@ class TerminalSession:
                                     target_file = cmd_tokens[1] if len(cmd_tokens) > 1 else "newfile.txt"
                                     nano_user = self.username
 
-                                editor = NanoEditor(self.channel, self.vfs, target_file, user=nano_user)
+                                editor = NanoEditor(
+                                    channel=self.channel,
+                                    vfs=self.vfs,
+                                    file_path=target_file,
+                                    user=nano_user,
+                                    width=self.term_width,
+                                    height=self.term_height
+                                )
                                 editor.run()
 
                                 self.logger.log_interaction(

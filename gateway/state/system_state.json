@@ -584,8 +584,8 @@
                   "owner": "ubuntu",
                   "group": "ubuntu",
                   "perm": "600",
-                  "mtime": "Nov 06 20:30",
-                  "content": "sudo apt update\nsudo systemctl status nginx\nls -la\ncat notes.txt\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\n"
+                  "mtime": "Nov 06 20:38",
+                  "content": "sudo apt update\nsudo systemctl status nginx\nls -la\ncat notes.txt\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\n"
                 },
                 "notes.txt": {
                   "type": "file",
@@ -594,6 +594,14 @@
                   "perm": "644",
                   "mtime": "Oct 30 12:00",
                   "content": "Deployment Notes:\n1. Database host: 192.168.101.50\n2. App backup script in /tmp\n3. Sudo password is configured for ubuntu user\n"
+                },
+                "nano_test.txt": {
+                  "type": "file",
+                  "owner": "ubuntu",
+                  "group": "ubuntu",
+                  "perm": "644",
+                  "mtime": "Nov 06 20:38",
+                  "content": "Line 1\nLine 2\nLine 3"
                 }
               }
             }
@@ -708,16 +716,16 @@
                   "owner": "syslog",
                   "group": "adm",
                   "perm": "640",
-                  "mtime": "Nov 06 20:30",
-                  "content": "Oct 30 12:05:14 ubuntu-srv-01 sshd[1200]: Accepted password for ubuntu from 192.168.1.1 port 54210 ssh2\nOct 30 12:05:14 ubuntu-srv-01 systemd-logind[420]: New session 3 of user ubuntu.\nNov 06 20:30:32 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\n"
+                  "mtime": "Nov 06 20:38",
+                  "content": "Oct 30 12:05:14 ubuntu-srv-01 sshd[1200]: Accepted password for ubuntu from 192.168.1.1 port 54210 ssh2\nOct 30 12:05:14 ubuntu-srv-01 systemd-logind[420]: New session 3 of user ubuntu.\nNov 06 20:30:32 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\nNov 06 20:38:55 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\n"
                 },
                 "dpkg.log": {
                   "type": "file",
                   "owner": "root",
                   "group": "root",
                   "perm": "644",
-                  "mtime": "Nov 06 20:30",
-                  "content": "2023-10-30 11:58:10 startup archives unpack\n2023-10-30 11:58:12 status installed nginx:all 1.18.0-6ubuntu14.4\n2026-11-06 20:30:35 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:30:35 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:30:35 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:30:35 status installed htop:amd64 3.0.5-7build2\n"
+                  "mtime": "Nov 06 20:38",
+                  "content": "2023-10-30 11:58:10 startup archives unpack\n2023-10-30 11:58:12 status installed nginx:all 1.18.0-6ubuntu14.4\n2026-11-06 20:30:35 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:30:35 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:30:35 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:30:35 status installed htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 20:38:57 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status not-installed htop:amd64 <none>\n2026-11-06 20:38:57 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:38:57 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status installed htop:amd64 3.0.5-7build2\n"
                 },
                 "apt": {
                   "type": "dir",
@@ -731,8 +739,8 @@
                       "owner": "root",
                       "group": "root",
                       "perm": "644",
-                      "mtime": "Nov 06 20:30",
-                      "content": "Start-Date: 2023-10-30  11:58:00\nCommandline: apt install nginx -y\nInstall: nginx:amd64 (1.18.0-6ubuntu14.4)\nEnd-Date: 2023-10-30  11:58:15\n\nStart-Date: 2026-11-06 20:30:35\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:30:35\n"
+                      "mtime": "Nov 06 20:38",
+                      "content": "Start-Date: 2023-10-30  11:58:00\nCommandline: apt install nginx -y\nInstall: nginx:amd64 (1.18.0-6ubuntu14.4)\nEnd-Date: 2023-10-30  11:58:15\n\nStart-Date: 2026-11-06 20:30:35\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:30:35\n\nStart-Date: 2026-11-06 20:38:57\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:38:57\n"
                     },
                     "term.log": {
                       "type": "file",
@@ -793,7 +801,7 @@
                   "owner": "root",
                   "group": "root",
                   "perm": "755",
-                  "mtime": "Nov 06 20:30",
+                  "mtime": "Nov 06 20:38",
                   "content": "#!/bin/bash\n# Simulated binary for htop\necho 'htop 3.0.5-7build2'\n"
                 }
               }

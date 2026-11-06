@@ -25,6 +25,9 @@ class HoneypotSSHInterface(paramiko.ServerInterface):
         self.client_port = client_port
         self.logger = logger
         self.username = "root"
+        self.password = ""
+        self.term_width = 80
+        self.term_height = 24
         self.session_id = str(uuid.uuid4())
         self.event = threading.Event()
 
@@ -35,6 +38,7 @@ class HoneypotSSHInterface(paramiko.ServerInterface):
 
     def check_auth_password(self, username, password):
         self.username = username
+        self.password = password
         
         user_ok = ("*" in HONEYPOT_ALLOWED_USERS) or (username in HONEYPOT_ALLOWED_USERS)
         pass_ok = password in HONEYPOT_ALLOWED_PASSWORDS
@@ -55,6 +59,8 @@ class HoneypotSSHInterface(paramiko.ServerInterface):
         return paramiko.AUTH_FAILED
 
     def check_channel_pty_request(self, channel, term, width, height, pixelwidth, pixelheight, modes):
+        self.term_width = width or 80
+        self.term_height = height or 24
         return True
 
     def check_channel_shell_request(self, channel):
@@ -106,6 +112,9 @@ class SSHGatewayServer:
                 client_ip=client_ip,
                 client_port=client_port,
                 username=server_interface.username,
+                password=server_interface.password,
+                term_width=server_interface.term_width,
+                term_height=server_interface.term_height,
                 logger=self.logger,
                 session_id=server_interface.session_id
             )
