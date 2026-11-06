@@ -6,7 +6,6 @@ from pathlib import Path
 from gateway.vfs import VirtualFileSystem
 from ai_engine.router import CommandRouter
 from ai_engine.llm_client import LLMClient
-from threat_intel.mitre_mapper import MitreMapper
 from threat_intel.logger import HoneypotLogger
 from config import HOSTNAME, DEFAULT_USER
 
@@ -182,8 +181,7 @@ class TerminalSession:
 
                             stdout, handler, latency = self.router.execute(command, user=self.username)
                             
-                            # Phân tích MITRE & Ghi nhật ký sự kiện
-                            mitre_tags = MitreMapper.map_command(command)
+                            # Ghi nhật ký sự kiện tương tác thông thường (không gán nhãn)
                             self.logger.log_interaction(
                                 session_id=self.session_id,
                                 source_ip=self.client_ip,
@@ -192,8 +190,7 @@ class TerminalSession:
                                 command=command,
                                 command_output="" if stdout == "__EXIT__" else stdout,
                                 handler_type=handler,
-                                latency_ms=latency,
-                                mitre_matches=mitre_tags
+                                latency_ms=latency
                             )
 
                             # Nếu hacker gõ exit/logout

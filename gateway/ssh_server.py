@@ -37,7 +37,7 @@ class HoneypotSSHInterface(paramiko.ServerInterface):
                 self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=True, session_id=self.session_id)
             return paramiko.AUTH_SUCCESSFUL
         else:
-            print(f"[-] [AUTH FAILED] IP: {self.client_ip}:{self.client_port} | User: '{username}' | Pass: '{password}' -> TỪ CHỐI (BRUTE FORCE T1110)")
+            print(f"[-] [AUTH FAILED] IP: {self.client_ip}:{self.client_port} | User: '{username}' | Pass: '{password}' -> TỪ CHỐI (SAI MẬT KHẨU)")
             if self.logger:
                 self.logger.log_auth_attempt(self.client_ip, self.client_port, username, password, success=False, session_id=str(uuid.uuid4()))
             return paramiko.AUTH_FAILED
