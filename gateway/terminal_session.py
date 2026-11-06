@@ -426,7 +426,10 @@ class TerminalSession:
                                     self.channel.send("logout\r\n")
                                     return
 
-                            stdout, handler, latency = self.router.execute(command, user=exec_user)
+                            stdout, handler, latency = self.router.execute(command, user=exec_user, channel=self.channel)
+
+                            is_streamed = stdout.startswith("__STREAMED__")
+                            clean_stdout = stdout[len("__STREAMED__"):] if is_streamed else stdout
 
                             # Ghi log
                             self.logger.log_interaction(
@@ -435,12 +438,12 @@ class TerminalSession:
                                 source_port=self.client_port,
                                 username=self.username,
                                 command=command,
-                                command_output="" if stdout == "__EXIT__" else stdout,
+                                command_output="" if clean_stdout == "__EXIT__" else clean_stdout,
                                 handler_type=handler,
                                 latency_ms=latency
                             )
 
-                            if stdout == "__EXIT__":
+                            if clean_stdout == "__EXIT__":
                                 if self.user_stack:
                                     self.username, prev_cwd = self.user_stack.pop()
                                     self.vfs.cwd = prev_cwd
@@ -452,11 +455,12 @@ class TerminalSession:
                                     self.channel.send("logout\r\n")
                                     return
 
-                            # Gửi stdout về terminal
-                            formatted_stdout = stdout.replace("\r\n", "\n").replace("\n", "\r\n")
-                            if formatted_stdout and not formatted_stdout.endswith("\r\n"):
-                                formatted_stdout += "\r\n"
-                            self.channel.send(formatted_stdout)
+                            # Gửi stdout về terminal (nếu chưa được phát luồng live)
+                            if not is_streamed:
+                                formatted_stdout = clean_stdout.replace("\r\n", "\n").replace("\n", "\r\n")
+                                if formatted_stdout and not formatted_stdout.endswith("\r\n"):
+                                    formatted_stdout += "\r\n"
+                                self.channel.send(formatted_stdout)
 
                         self.channel.send(self.get_prompt())
 

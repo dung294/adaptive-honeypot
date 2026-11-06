@@ -48,7 +48,8 @@ class TestInteractiveFeatures(unittest.TestCase):
         inputs = [
             b"\x1b[B",          # Down arrow
             b" Edited",         # Insert text
-            b"\x0f",            # Ctrl+O (Save)
+            b"\x0f",            # Ctrl+O (Save prompt)
+            b"\r",              # Enter to confirm save
             b"\x18"             # Ctrl+X (Exit)
         ]
         mock_chan = MockChannel(inputs)

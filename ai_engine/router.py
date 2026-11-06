@@ -2,6 +2,7 @@ import time
 import re
 import shlex
 import os
+import fnmatch
 from typing import Tuple, Dict, Set, List, Optional
 from gateway.vfs import VirtualFileSystem
 from gateway.state.system_state import LinuxSystemState
@@ -96,7 +97,43 @@ class CommandRouter:
         pattern = re.compile(r'\$(?:\{([a-zA-Z0-9_?]+)\}|([a-zA-Z0-9_?]+))')
         return pattern.sub(replace_var, text)
 
-    def execute(self, raw_cmd: str, user: str = "root") -> Tuple[str, str, float]:
+    def _expand_wildcards(self, tokens: List[str], user: str = "root") -> List[str]:
+        """Mở rộng ký tự đại diện wildcard (*, ?) giống GNU Bash thật."""
+        expanded = []
+        for token in tokens:
+            if token.startswith("-") or "=" in token or not any(c in token for c in ("*", "?")):
+                expanded.append(token)
+                continue
+
+            if "/" in token:
+                dir_part, pattern = token.rsplit("/", 1)
+                target_dir = self.vfs.resolve_path(dir_part if dir_part else "/")
+            else:
+                dir_part = ""
+                pattern = token
+                target_dir = self.vfs.cwd
+
+            node = self.vfs._get_node(target_dir)
+            if not node or node.get("type") != "dir":
+                expanded.append(token)
+                continue
+
+            children = sorted(list(node.get("children", {}).keys()))
+            matched = []
+            for name in children:
+                if not pattern.startswith(".") and name.startswith("."):
+                    continue
+                if fnmatch.fnmatch(name, pattern):
+                    matched.append(f"{dir_part}/{name}" if dir_part else name)
+
+            if matched:
+                expanded.extend(matched)
+            else:
+                expanded.append(token)
+
+        return expanded
+
+    def execute(self, raw_cmd: str, user: str = "root", channel = None) -> Tuple[str, str, float]:
         """
         Thực thi câu lệnh từ SSH Terminal.
         Hỗ trợ:
@@ -125,7 +162,7 @@ class CommandRouter:
                 p = part.strip()
                 if not p:
                     continue
-                out, handler, _ = self._execute_pipeline_or_single(p, user=user)
+                out, handler, _ = self._execute_pipeline_or_single(p, user=user, channel=channel)
                 if out == "__EXIT__":
                     return "__EXIT__", "VFS", 0.1
                 total_out.append(out)
@@ -139,7 +176,7 @@ class CommandRouter:
                 p = part.strip()
                 if not p:
                     continue
-                out, handler, _ = self._execute_pipeline_or_single(p, user=user)
+                out, handler, _ = self._execute_pipeline_or_single(p, user=user, channel=channel)
                 if out == "__EXIT__":
                     return "__EXIT__", "VFS", 0.1
                 total_out.append(out)
@@ -155,7 +192,7 @@ class CommandRouter:
                 p = part.strip()
                 if not p:
                     continue
-                out, handler, _ = self._execute_pipeline_or_single(p, user=user)
+                out, handler, _ = self._execute_pipeline_or_single(p, user=user, channel=channel)
                 if out == "__EXIT__":
                     return "__EXIT__", "VFS", 0.1
                 total_out.append(out)
@@ -164,9 +201,9 @@ class CommandRouter:
             latency = (time.perf_counter() - start_time) * 1000
             return "".join(total_out), "CHAINED_OR", latency
 
-        return self._execute_pipeline_or_single(clean_cmd, user=user, start_time=start_time)
+        return self._execute_pipeline_or_single(clean_cmd, user=user, start_time=start_time, channel=channel)
 
-    def _execute_pipeline_or_single(self, cmd: str, user: str = "root", start_time: float = None) -> Tuple[str, str, float]:
+    def _execute_pipeline_or_single(self, cmd: str, user: str = "root", start_time: float = None, channel = None) -> Tuple[str, str, float]:
         if start_time is None:
             start_time = time.perf_counter()
 
@@ -174,7 +211,7 @@ class CommandRouter:
         if "|" in cmd:
             parts = [p.strip() for p in cmd.split("|")]
             if len(parts) > 1:
-                out, handler, _ = self._execute_redirection_or_single(parts[0], user=user)
+                out, handler, _ = self._execute_redirection_or_single(parts[0], user=user, channel=channel)
                 for stage in parts[1:]:
                     s_tokens = stage.split()
                     if not s_tokens:
@@ -265,15 +302,15 @@ class CommandRouter:
                         if sub_args:
                             joined_args = " ".join(out.split())
                             sub_cmd = f"{' '.join(sub_args)} {joined_args}"
-                            out, _, _ = self._execute_redirection_or_single(sub_cmd, user=user)
+                            out, _, _ = self._execute_redirection_or_single(sub_cmd, user=user, channel=channel)
 
                 latency = (time.perf_counter() - start_time) * 1000
                 self.last_exit_code = 0
                 return out, "PIPELINE", latency
 
-        return self._execute_redirection_or_single(cmd, user=user, start_time=start_time)
+        return self._execute_redirection_or_single(cmd, user=user, start_time=start_time, channel=channel)
 
-    def _execute_redirection_or_single(self, cmd: str, user: str = "root", start_time: float = None) -> Tuple[str, str, float]:
+    def _execute_redirection_or_single(self, cmd: str, user: str = "root", start_time: float = None, channel = None) -> Tuple[str, str, float]:
         if start_time is None:
             start_time = time.perf_counter()
 
@@ -297,10 +334,12 @@ class CommandRouter:
         if target_file:
             target_file = target_file.replace("2>&1", "").strip()
 
-        stdout, handler, latency = self._execute_core(main_cmd, user=user, start_time=start_time)
+        stdout, handler, latency = self._execute_core(main_cmd, user=user, start_time=start_time, channel=channel)
 
         if target_file and stdout != "__EXIT__":
-            ok, err = self.vfs.write_file(target_file, stdout, append=append, user=user)
+            # Loại bỏ marker __STREAMED__ nếu có
+            clean_out = stdout[len("__STREAMED__"):] if stdout.startswith("__STREAMED__") else stdout
+            ok, err = self.vfs.write_file(target_file, clean_out, append=append, user=user)
             if not ok:
                 self.last_exit_code = 1
                 return f"bash: {target_file}: {err}\n", "VFS", latency
@@ -309,7 +348,7 @@ class CommandRouter:
 
         return stdout, handler, latency
 
-    def _execute_core(self, cmd: str, user: str = "root", start_time: float = None) -> Tuple[str, str, float]:
+    def _execute_core(self, cmd: str, user: str = "root", start_time: float = None, channel = None) -> Tuple[str, str, float]:
         if start_time is None:
             start_time = time.perf_counter()
 
@@ -319,17 +358,17 @@ class CommandRouter:
             return "", "VFS", 0.05
 
         try:
-            tokens = shlex.split(clean_cmd)
+            raw_tokens = shlex.split(clean_cmd)
         except Exception:
-            tokens = clean_cmd.split()
+            raw_tokens = clean_cmd.split()
 
-        if not tokens:
+        if not raw_tokens:
             self.last_exit_code = 0
             return "", "VFS", 0.05
 
-        if tokens[0] == "export":
+        if raw_tokens[0] == "export":
             latency = (time.perf_counter() - start_time) * 1000
-            for t in tokens[1:]:
+            for t in raw_tokens[1:]:
                 if "=" in t:
                     k, v = t.split("=", 1)
                     self.env_vars[k.strip()] = v.strip().strip("'\"")
@@ -337,20 +376,22 @@ class CommandRouter:
             return "", "VFS", latency
 
         effective_user = user
-        if tokens[0] == "sudo":
-            if len(tokens) == 1:
+        if raw_tokens[0] == "sudo":
+            if len(raw_tokens) == 1:
                 self.last_exit_code = 1
                 return "usage: sudo -h | -K | -k | -V\nusage: sudo -v [-ABkNnS] [-g group] [-h host] [-p prompt] [-u user]\n", "VFS", (time.perf_counter() - start_time) * 1000
             effective_user = "root"
-            tokens = tokens[1:]
-            clean_cmd = " ".join(tokens)
+            raw_tokens = raw_tokens[1:]
+            clean_cmd = " ".join(raw_tokens)
 
+        # Mở rộng Wildcard Globbing (*, ?) giống Bash thật
+        tokens = self._expand_wildcards(raw_tokens, user=effective_user)
         base_cmd = tokens[0]
         args = tokens[1:]
 
         # 1. TRÌNH QUẢN LÝ GÓI APT / DPKG
         if base_cmd in ("apt", "apt-get", "apt-cache", "dpkg"):
-            out, code = self.apt_manager.handle_apt(tokens, clean_cmd, user=effective_user)
+            out, code = self.apt_manager.handle_apt(tokens, clean_cmd, user=effective_user, channel=channel)
             self.last_exit_code = code
             latency = (time.perf_counter() - start_time) * 1000
             return out, "APT", latency
@@ -437,12 +478,15 @@ class CommandRouter:
                 self.last_exit_code = 1
                 return "rm: missing operand\n", "VFS", 0.1
             rec = "-r" in args or "-rf" in args or "-R" in args or "--recursive" in args
+            targets = [a for a in args if not a.startswith("-")]
+            if ("/" in targets or "/*" in targets) and "--no-preserve-root" not in args:
+                self.last_exit_code = 1
+                return "rm: it is dangerous to operate recursively on '/'\nrm: use --no-preserve-root to override this failsafe\n", "VFS", 0.1
             errs = []
-            for target in args:
-                if not target.startswith("-"):
-                    ok, err = self.vfs.rm(target, recursive=rec, user=effective_user)
-                    if not ok:
-                        errs.append(err)
+            for target in targets:
+                ok, err = self.vfs.rm(target, recursive=rec, user=effective_user)
+                if not ok:
+                    errs.append(err)
             self.last_exit_code = 0 if not errs else 1
             return ("\n".join(errs) + "\n" if errs else ""), "VFS", (time.perf_counter() - start_time) * 1000
 

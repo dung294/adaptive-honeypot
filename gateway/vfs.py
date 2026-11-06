@@ -335,9 +335,33 @@ class VirtualFileSystem:
         self.state.save_state()
         return True, ""
 
-    def mkdir(self, path: str, user: str = None) -> Tuple[bool, str]:
+    def mkdir(self, path: str, recursive: bool = False, user: str = None) -> Tuple[bool, str]:
         curr_user = user or self.user
         target = self.resolve_path(path)
+        
+        if recursive:
+            parts = [p for p in target.strip("/").split("/") if p]
+            curr_p = ""
+            for p in parts:
+                parent_p = curr_p if curr_p else "/"
+                curr_p += "/" + p
+                parent_node = self.state.get_node(parent_p)
+                if not parent_node or parent_node.get("type") != "dir":
+                    return False, f"mkdir: cannot create directory '{path}': No such file or directory"
+                if not self.check_permission(parent_p, mode="w", user=curr_user):
+                    return False, f"mkdir: cannot create directory '{path}': Permission denied"
+                if p not in parent_node.setdefault("children", {}):
+                    parent_node["children"][p] = {
+                        "type": "dir",
+                        "owner": curr_user,
+                        "group": curr_user,
+                        "perm": "755",
+                        "mtime": time.strftime("%b %d %H:%M"),
+                        "children": {}
+                    }
+            self.state.save_state()
+            return True, ""
+
         parent_path = "/" + "/".join(target.strip("/").split("/")[:-1])
         new_name = target.strip("/").split("/")[-1]
         

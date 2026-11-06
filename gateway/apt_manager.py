@@ -1,31 +1,24 @@
 import time
 import os
-from typing import Tuple, Dict, Any, List
+from typing import Tuple, Dict, Any, List, Optional
 from gateway.state.system_state import LinuxSystemState
 
 class AptManager:
     """
     Trình quản lý package Linux giả lập có trạng thái đầy đủ (Stateful APT/DPKG Engine).
-    Hỗ trợ:
-      - apt update / apt-get update
-      - apt upgrade / apt-get upgrade [-y]
-      - apt install / apt-get install [-y] <pkg>
-      - apt remove / apt purge <pkg>
-      - apt autoremove
-      - apt list [--installed | --upgradable]
-      - apt-cache search <query>
-      - dpkg -l [<pattern>]
-      - dpkg -s <pkg>
-    Đồng bộ dữ liệu trực tiếp vào LinuxSystemState và VirtualFileSystem.
+    Hỗ trợ mô phỏng độ trễ đường truyền tải mạng (Realistic Network Pacing):
+    - Tải từng gói, từng mirror repo với độ trễ 0.2s - 0.4s như máy chủ Ubuntu thật.
+    - Cập nhật trực tiếp vào LinuxSystemState và VirtualFileSystem.
     """
 
     def __init__(self, state: LinuxSystemState, vfs):
         self.state = state
         self.vfs = vfs
 
-    def handle_apt(self, args: List[str], raw_cmd: str, user: str = "root") -> Tuple[str, int]:
+    def handle_apt(self, args: List[str], raw_cmd: str, user: str = "root", channel = None) -> Tuple[str, int]:
         """
         Xử lý các lệnh gọi apt / apt-get / apt-cache / dpkg.
+        Nếu channel != None, phát luồng (stream) từng dòng với độ trễ mạng thực tế.
         Trả về: (stdout_str, returncode)
         """
         if not args:
@@ -35,13 +28,31 @@ class AptManager:
         subargs = args[1:]
 
         if cmd in ("apt", "apt-get"):
-            return self._handle_apt_cli(subargs, raw_cmd, user)
+            return self._handle_apt_cli(subargs, raw_cmd, user, channel=channel)
         elif cmd == "apt-cache":
             return self._handle_apt_cache(subargs, user)
         elif cmd == "dpkg":
             return self._handle_dpkg(subargs, user)
         
         return f"bash: {cmd}: command not found\n", 127
+
+    def _stream_output(self, lines: List[Tuple[str, float]], channel = None) -> str:
+        """Phát luồng kết quả ra channel với độ trễ mô phỏng tốc độ mạng của user"""
+        full_lines = []
+        for text, delay in lines:
+            full_lines.append(text)
+            if channel:
+                try:
+                    for subline in text.split("\n"):
+                        channel.send(subline + "\r\n")
+                    if delay > 0:
+                        time.sleep(delay)
+                except Exception:
+                    pass
+        output = "\n".join(full_lines) + "\n"
+        if channel:
+            return "__STREAMED__" + output
+        return output
 
     def _apt_usage(self) -> str:
         return (
@@ -64,7 +75,7 @@ class AptManager:
             "  satisfy - satisfy dependency strings\n"
         )
 
-    def _handle_apt_cli(self, args: List[str], raw_cmd: str, user: str) -> Tuple[str, int]:
+    def _handle_apt_cli(self, args: List[str], raw_cmd: str, user: str, channel = None) -> Tuple[str, int]:
         if not args:
             return self._apt_usage(), 1
 
@@ -86,20 +97,23 @@ class AptManager:
 
             self.state.last_apt_update = time.strftime("%a, %d %b %Y %H:%M:%S UTC")
             self.state.save()
-            out = (
-                "Hit:1 http://archive.ubuntu.com/ubuntu jammy InRelease\n"
-                "Get:2 http://archive.ubuntu.com/ubuntu jammy-updates InRelease [119 kB]\n"
-                "Get:3 http://archive.ubuntu.com/ubuntu jammy-backports InRelease [109 kB]\n"
-                "Get:4 http://security.ubuntu.com/ubuntu jammy-security InRelease [110 kB]\n"
-                "Get:5 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [1,720 kB]\n"
-                "Get:6 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1,114 kB]\n"
-                "Get:7 http://security.ubuntu.com/ubuntu jammy-security/main amd64 Packages [1,450 kB]\n"
-                "Fetched 3,622 kB in 1s (2,840 kB/s)\n"
-                "Reading package lists... Done\n"
-                "Building dependency tree... Done\n"
-                "Reading state information... Done\n"
-                "All packages are up to date.\n"
-            )
+            
+            # Mô phỏng quá trình tải repo qua mạng với độ trễ từng dòng chân thực
+            pacing_lines = [
+                ("Hit:1 http://archive.ubuntu.com/ubuntu jammy InRelease", 0.35),
+                ("Get:2 http://archive.ubuntu.com/ubuntu jammy-updates InRelease [119 kB]", 0.30),
+                ("Get:3 http://archive.ubuntu.com/ubuntu jammy-backports InRelease [109 kB]", 0.25),
+                ("Get:4 http://security.ubuntu.com/ubuntu jammy-security InRelease [110 kB]", 0.30),
+                ("Get:5 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [1,720 kB]", 0.45),
+                ("Get:6 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1,114 kB]", 0.40),
+                ("Get:7 http://security.ubuntu.com/ubuntu jammy-security/main amd64 Packages [1,450 kB]", 0.35),
+                ("Fetched 3,622 kB in 2s (1,680 kB/s)", 0.25),
+                ("Reading package lists... Done", 0.30),
+                ("Building dependency tree... Done", 0.20),
+                ("Reading state information... Done", 0.20),
+                ("All packages are up to date.", 0.10)
+            ]
+            out = self._stream_output(pacing_lines, channel=channel)
             return out, 0
 
         # 2. apt upgrade
@@ -111,13 +125,14 @@ class AptManager:
                 )
                 return err, 100
 
-            out = (
-                "Reading package lists... Done\n"
-                "Building dependency tree... Done\n"
-                "Reading state information... Done\n"
-                "Calculating upgrade... Done\n"
-                "0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n"
-            )
+            pacing_lines = [
+                ("Reading package lists... Done", 0.30),
+                ("Building dependency tree... Done", 0.20),
+                ("Reading state information... Done", 0.20),
+                ("Calculating upgrade... Done", 0.35),
+                ("0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.", 0.10)
+            ]
+            out = self._stream_output(pacing_lines, channel=channel)
             return out, 0
 
         # 3. apt install <pkg>
@@ -137,105 +152,80 @@ class AptManager:
             # Đã cài đặt rồi?
             if target_pkg in self.state.packages:
                 info = self.state.packages[target_pkg]
-                return (
-                    f"Reading package lists... Done\n"
-                    f"Building dependency tree... Done\n"
-                    f"Reading state information... Done\n"
-                    f"{target_pkg} is already the newest version ({info.get('version', '1.0.0')}).\n"
-                    f"0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n"
-                ), 0
+                pacing_lines = [
+                    ("Reading package lists... Done", 0.25),
+                    ("Building dependency tree... Done", 0.20),
+                    ("Reading state information... Done", 0.20),
+                    (f"{target_pkg} is already the newest version ({info.get('version', '1.0.0')}).", 0.15),
+                    ("0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.", 0.10)
+                ]
+                out = self._stream_output(pacing_lines, channel=channel)
+                return out, 0
 
-            # Kiểm tra trong kho có sẵn
+            # Gói có trong danh mục kho
             if target_pkg in self.state.available_packages:
                 meta = self.state.available_packages[target_pkg]
                 ver = meta.get("version", "1.0.0-1ubuntu1")
                 size = meta.get("size", 250)
                 desc = meta.get("desc", f"{target_pkg} package")
-
-                # Cài đặt vào state.packages
-                self.state.packages[target_pkg] = {
-                    "version": ver,
-                    "status": "installed",
-                    "desc": desc,
-                    "installed_size": size * 3
-                }
-
-                # Tạo binary giả lập trong VFS
-                bin_path = f"/usr/bin/{target_pkg}"
-                bin_script = f"#!/bin/bash\n# Simulated binary for {target_pkg}\necho '{target_pkg} {ver}'\n"
-                self.vfs.write_file(bin_path, bin_script, user="root")
-                self.vfs.chmod(bin_path, "755", user="root")
-
-                # Cập nhật log /var/log/dpkg.log và /var/log/apt/history.log
-                now_str = time.strftime("%Y-%m-%d %H:%M:%S")
-                dpkg_entry = (
-                    f"{now_str} install {target_pkg}:amd64 <none> {ver}\n"
-                    f"{now_str} status half-installed {target_pkg}:amd64 {ver}\n"
-                    f"{now_str} status unpacked {target_pkg}:amd64 {ver}\n"
-                    f"{now_str} status installed {target_pkg}:amd64 {ver}\n"
-                )
-                self.vfs.write_file("/var/log/dpkg.log", dpkg_entry, append=True, user="root")
-
-                apt_hist = (
-                    f"\nStart-Date: {now_str}\n"
-                    f"Commandline: {raw_cmd}\n"
-                    f"Requested-By: root (0)\n"
-                    f"Install: {target_pkg}:amd64 ({ver})\n"
-                    f"End-Date: {now_str}\n"
-                )
-                self.vfs.write_file("/var/log/apt/history.log", apt_hist, append=True, user="root")
-
-                self.state.save()
-
-                out = (
-                    f"Reading package lists... Done\n"
-                    f"Building dependency tree... Done\n"
-                    f"Reading state information... Done\n"
-                    f"The following NEW packages will be installed:\n"
-                    f"  {target_pkg}\n"
-                    f"0 upgraded, 1 newly installed, 0 to remove and 0 not upgraded.\n"
-                    f"Need to get {size} kB of archives.\n"
-                    f"After this operation, {size * 3} kB of additional disk space will be used.\n"
-                    f"Get:1 http://archive.ubuntu.com/ubuntu jammy/main amd64 {target_pkg} amd64 {ver} [{size} kB]\n"
-                    f"Fetched {size} kB in 0s (1,250 kB/s)\n"
-                    f"Selecting previously unselected package {target_pkg}.\n"
-                    f"(Reading database ... 74528 files and directories currently installed.)\n"
-                    f"Preparing to unpack .../{target_pkg}_{ver}_amd64.deb ...\n"
-                    f"Unpacking {target_pkg} ({ver}) ...\n"
-                    f"Setting up {target_pkg} ({ver}) ...\n"
-                    f"Processing triggers for man-db (2.10.2-1) ...\n"
-                )
-                return out, 0
             else:
-                # Gói tùy biến không có trong repository chuẩn -> mô phỏng cài đặt generic
                 ver = "1.0.0-1"
-                self.state.packages[target_pkg] = {
-                    "version": ver,
-                    "status": "installed",
-                    "desc": f"Custom utility {target_pkg}",
-                    "installed_size": 512
-                }
-                bin_path = f"/usr/bin/{target_pkg}"
-                self.vfs.write_file(bin_path, f"#!/bin/bash\n# Simulated binary\n", user="root")
-                self.vfs.chmod(bin_path, "755", user="root")
-                self.state.save()
+                size = 320
+                desc = f"Custom utility {target_pkg}"
 
-                out = (
-                    f"Reading package lists... Done\n"
-                    f"Building dependency tree... Done\n"
-                    f"Reading state information... Done\n"
-                    f"The following NEW packages will be installed:\n"
-                    f"  {target_pkg}\n"
-                    f"0 upgraded, 1 newly installed, 0 to remove and 0 not upgraded.\n"
-                    f"Need to get 240 kB of archives.\n"
-                    f"After this operation, 512 kB of additional disk space will be used.\n"
-                    f"Get:1 http://archive.ubuntu.com/ubuntu jammy/universe amd64 {target_pkg} amd64 {ver} [240 kB]\n"
-                    f"Fetched 240 kB in 0s (1,150 kB/s)\n"
-                    f"Selecting previously unselected package {target_pkg}.\n"
-                    f"Unpacking {target_pkg} ({ver}) ...\n"
-                    f"Setting up {target_pkg} ({ver}) ...\n"
-                )
-                return out, 0
+            # Cài đặt vào state.packages
+            self.state.packages[target_pkg] = {
+                "version": ver,
+                "status": "installed",
+                "desc": desc,
+                "installed_size": size * 3
+            }
+
+            # Tạo binary giả lập trong VFS
+            bin_path = f"/usr/bin/{target_pkg}"
+            bin_script = f"#!/bin/bash\n# Simulated binary for {target_pkg}\necho '{target_pkg} {ver}'\n"
+            self.vfs.write_file(bin_path, bin_script, user="root")
+            self.vfs.chmod(bin_path, "755", user="root")
+
+            # Cập nhật log /var/log/dpkg.log và /var/log/apt/history.log
+            now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+            dpkg_entry = (
+                f"{now_str} install {target_pkg}:amd64 <none> {ver}\n"
+                f"{now_str} status half-installed {target_pkg}:amd64 {ver}\n"
+                f"{now_str} status unpacked {target_pkg}:amd64 {ver}\n"
+                f"{now_str} status installed {target_pkg}:amd64 {ver}\n"
+            )
+            self.vfs.write_file("/var/log/dpkg.log", dpkg_entry, append=True, user="root")
+
+            apt_hist = (
+                f"\nStart-Date: {now_str}\n"
+                f"Commandline: {raw_cmd}\n"
+                f"Requested-By: root (0)\n"
+                f"Install: {target_pkg}:amd64 ({ver})\n"
+                f"End-Date: {now_str}\n"
+            )
+            self.vfs.write_file("/var/log/apt/history.log", apt_hist, append=True, user="root")
+            self.state.save()
+
+            pacing_lines = [
+                ("Reading package lists... Done", 0.30),
+                ("Building dependency tree... Done", 0.20),
+                ("Reading state information... Done", 0.20),
+                (f"The following NEW packages will be installed:\n  {target_pkg}", 0.25),
+                ("0 upgraded, 1 newly installed, 0 to remove and 0 not upgraded.", 0.15),
+                (f"Need to get {size} kB of archives.", 0.15),
+                (f"After this operation, {size * 3} kB of additional disk space will be used.", 0.25),
+                (f"Get:1 http://archive.ubuntu.com/ubuntu jammy/main amd64 {target_pkg} amd64 {ver} [{size} kB]", 0.50),
+                (f"Fetched {size} kB in 1s (420 kB/s)", 0.25),
+                (f"Selecting previously unselected package {target_pkg}.", 0.20),
+                ("(Reading database ... 74528 files and directories currently installed.)", 0.25),
+                (f"Preparing to unpack .../{target_pkg}_{ver}_amd64.deb ...", 0.30),
+                (f"Unpacking {target_pkg} ({ver}) ...", 0.35),
+                (f"Setting up {target_pkg} ({ver}) ...", 0.40),
+                ("Processing triggers for man-db (2.10.2-1) ...", 0.30)
+            ]
+            out = self._stream_output(pacing_lines, channel=channel)
+            return out, 0
 
         # 4. apt remove / purge <pkg>
         elif subcmd in ("remove", "purge", "autoremove"):
@@ -247,27 +237,28 @@ class AptManager:
                 return err, 100
 
             if subcmd == "autoremove" or not params:
-                return (
-                    "Reading package lists... Done\n"
-                    "Building dependency tree... Done\n"
-                    "Reading state information... Done\n"
-                    "0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n"
-                ), 0
+                pacing_lines = [
+                    ("Reading package lists... Done", 0.25),
+                    ("Building dependency tree... Done", 0.20),
+                    ("Reading state information... Done", 0.20),
+                    ("0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.", 0.10)
+                ]
+                return self._stream_output(pacing_lines, channel=channel), 0
 
             target_pkg = params[0].lower()
             if target_pkg not in self.state.packages:
-                return (
-                    f"Reading package lists... Done\n"
-                    f"Building dependency tree... Done\n"
-                    f"Reading state information... Done\n"
-                    f"Package '{target_pkg}' is not installed, so not removed\n"
-                    f"0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n"
-                ), 0
+                pacing_lines = [
+                    ("Reading package lists... Done", 0.25),
+                    ("Building dependency tree... Done", 0.20),
+                    ("Reading state information... Done", 0.20),
+                    (f"Package '{target_pkg}' is not installed, so not removed", 0.15),
+                    ("0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.", 0.10)
+                ]
+                return self._stream_output(pacing_lines, channel=channel), 0
 
             ver = self.state.packages[target_pkg].get("version", "1.0.0")
             del self.state.packages[target_pkg]
 
-            # Xóa binary khỏi VFS nếu có
             self.vfs.rm(f"/usr/bin/{target_pkg}", user="root")
             self.vfs.rm(f"/usr/sbin/{target_pkg}", user="root")
 
@@ -282,19 +273,18 @@ class AptManager:
             self.vfs.write_file("/var/log/dpkg.log", dpkg_entry, append=True, user="root")
             self.state.save()
 
-            out = (
-                f"Reading package lists... Done\n"
-                f"Building dependency tree... Done\n"
-                f"Reading state information... Done\n"
-                f"The following packages will be REMOVED:\n"
-                f"  {target_pkg}\n"
-                f"0 upgraded, 0 newly installed, 1 to remove and 0 not upgraded.\n"
-                f"After this operation, 1,024 kB disk space will be freed.\n"
-                f"(Reading database ... 74520 files and directories currently installed.)\n"
-                f"Removing {target_pkg} ({ver}) ...\n"
-                f"Processing triggers for man-db (2.10.2-1) ...\n"
-            )
-            return out, 0
+            pacing_lines = [
+                ("Reading package lists... Done", 0.25),
+                ("Building dependency tree... Done", 0.20),
+                ("Reading state information... Done", 0.20),
+                (f"The following packages will be REMOVED:\n  {target_pkg}", 0.20),
+                ("0 upgraded, 0 newly installed, 1 to remove and 0 not upgraded.", 0.15),
+                ("After this operation, 1,024 kB disk space will be freed.", 0.20),
+                ("(Reading database ... 74520 files and directories currently installed.)", 0.25),
+                (f"Removing {target_pkg} ({ver}) ...", 0.35),
+                ("Processing triggers for man-db (2.10.2-1) ...", 0.25)
+            ]
+            return self._stream_output(pacing_lines, channel=channel), 0
 
         # 5. apt list
         elif subcmd == "list":
@@ -354,7 +344,6 @@ class AptManager:
         subcmd = args[0]
         params = args[1:]
 
-        # dpkg -l [<pattern>]
         if subcmd in ("-l", "--list"):
             header = (
                 "Desired=Unknown/Install/Remove/Purge/Hold\n"
@@ -373,7 +362,6 @@ class AptManager:
                 lines.append(f"ii  {name.ljust(14)} {ver} amd64        {desc}")
             return "\n".join(lines) + "\n", 0
 
-        # dpkg -s <pkg>
         elif subcmd in ("-s", "--status"):
             if not params:
                 return "dpkg-query: error: --status takes at least one package name argument\n", 1

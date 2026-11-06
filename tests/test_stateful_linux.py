@@ -80,8 +80,19 @@ class TestStatefulLinux(unittest.TestCase):
         out, _, _ = self.router.execute("cat moved.txt", user="ubuntu")
         self.assertIn("No such file or directory", out)
 
-        # Cleanup
-        self.router.execute("rm test.txt", user="ubuntu")
+        # 6. Wildcard expansion test: rm -rf *
+        self.router.execute("mkdir /tmp/wildcard_test", user="ubuntu")
+        self.router.execute("cd /tmp/wildcard_test", user="ubuntu")
+        self.router.execute("touch a.txt b.txt c.log", user="ubuntu")
+        out, _, _ = self.router.execute("ls", user="ubuntu")
+        self.assertIn("a.txt", out)
+        self.assertIn("b.txt", out)
+        # Execute rm -rf *
+        self.router.execute("rm -rf *", user="ubuntu")
+        out, _, _ = self.router.execute("ls", user="ubuntu")
+        self.assertEqual(out.strip(), "")
+        self.router.execute("cd ~", user="ubuntu")
+        self.router.execute("rm -rf /tmp/wildcard_test", user="ubuntu")
 
     def test_pipelines_and_redirection(self):
         # Pipe to grep
