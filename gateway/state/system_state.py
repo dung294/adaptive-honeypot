@@ -112,6 +112,11 @@ class LinuxSystemState:
         }
 
         self.apt_updated_time = None
+        self.custom_processes: List[Dict[str, Any]] = []
+        self.crontabs: Dict[str, str] = {
+            "root": "*/15 * * * * /root/deploy.sh > /dev/null 2>&1\n"
+        }
+        self.next_pid: int = 1500
         self.fs = self._init_default_filesystem()
         
         # Nạp lại dữ liệu đã lưu nếu có
@@ -440,6 +445,41 @@ class LinuxSystemState:
             log_line = f"{timestamp} {self.hostname} {message}\n"
             node["content"] = node.get("content", "") + log_line
 
+    def add_process(self, user: str, cmd: str, cpu: str = "0.0", mem: str = "0.1") -> int:
+        """Đăng ký tiến trình ngầm (background process) do attacker khởi tạo."""
+        pid = self.next_pid
+        self.next_pid += 1
+        now_hm = time.strftime("%H:%M")
+        proc = {
+            "pid": pid,
+            "user": user,
+            "cpu": cpu,
+            "mem": mem,
+            "vsz": 18500 + (pid * 3),
+            "rss": 4200 + (pid * 2),
+            "tty": "?",
+            "stat": "Sl",
+            "start": now_hm,
+            "time": "0:00",
+            "cmd": cmd
+        }
+        self.custom_processes.append(proc)
+        self.save_state()
+        return pid
+
+    def kill_process(self, pid_or_name: str) -> bool:
+        """Loại bỏ tiến trình ảo khi bị kill."""
+        target_idx = -1
+        for idx, p in enumerate(self.custom_processes):
+            if str(p.get("pid")) == str(pid_or_name) or str(pid_or_name) in p.get("cmd", ""):
+                target_idx = idx
+                break
+        if target_idx >= 0:
+            self.custom_processes.pop(target_idx)
+            self.save_state()
+            return True
+        return False
+
     def save_state(self):
         """Lưu toàn bộ trạng thái hệ sinh thái ảo ra tệp json."""
         try:
@@ -451,6 +491,9 @@ class LinuxSystemState:
                 "services": self.services,
                 "packages": self.packages,
                 "apt_updated_time": self.apt_updated_time,
+                "custom_processes": self.custom_processes,
+                "crontabs": self.crontabs,
+                "next_pid": self.next_pid,
                 "fs": self.fs
             }
             with open(self.state_file, "w", encoding="utf-8") as f:
@@ -474,6 +517,9 @@ class LinuxSystemState:
                     self.services = data.get("services", self.services)
                     self.packages = data.get("packages", self.packages)
                     self.apt_updated_time = data.get("apt_updated_time", None)
+                    self.custom_processes = data.get("custom_processes", self.custom_processes)
+                    self.crontabs = data.get("crontabs", self.crontabs)
+                    self.next_pid = data.get("next_pid", self.next_pid)
                     if "fs" in data:
                         self.fs = data["fs"]
             except Exception:

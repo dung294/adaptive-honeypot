@@ -38,7 +38,7 @@ class CommandRouter:
         # System & Hardware & Process
         "uname", "hostname", "hostnamectl", "lsb_release", "whoami", "id", "groups", "uptime",
         "w", "who", "last", "lastlog", "ps", "top", "htop", "pstree", "free", "vmstat", "iostat",
-        "lsof", "killall", "pkill", "pgrep", "dmesg", "service", "systemctl", "journalctl",
+        "lsof", "kill", "killall", "pkill", "pgrep", "dmesg", "service", "systemctl", "journalctl",
         "date", "cal", "sleep", "nohup", "time", "watch", "timeout", "env", "printenv",
         "which", "whereis", "arch", "lscpu", "lsblk", "lspci", "lsusb", "fdisk", "mount", "umount",
         
@@ -316,6 +316,13 @@ class CommandRouter:
 
         expanded_cmd = self._expand_env_vars(cmd, user=user)
 
+        # Xử lý background process (&)
+        is_background = False
+        trimmed = expanded_cmd.strip()
+        if trimmed.endswith("&") and not trimmed.endswith("&&"):
+            is_background = True
+            expanded_cmd = trimmed[:-1].strip()
+
         append = False
         target_file = None
         main_cmd = expanded_cmd
@@ -333,6 +340,21 @@ class CommandRouter:
 
         if target_file:
             target_file = target_file.replace("2>&1", "").strip()
+
+        # Kiểm tra lệnh chạy ngầm (nohup hoặc &)
+        is_nohup = main_cmd.startswith("nohup ")
+        if is_background or is_nohup:
+            actual_cmd = main_cmd[6:].strip() if is_nohup else main_cmd
+            pid = self.state.add_process(user=user, cmd=actual_cmd)
+            prefix = ""
+            if is_nohup:
+                prefix = "nohup: ignoring input and appending output to 'nohup.out'\n"
+                if not target_file:
+                    self.vfs.write_file("nohup.out", f"[{actual_cmd}] running in background\n", append=True, user=user)
+            job_id = len(self.state.custom_processes)
+            self.last_exit_code = 0
+            latency = (time.perf_counter() - start_time) * 1000
+            return f"{prefix}[{job_id}] {pid}\n", "VFS_BG", latency
 
         stdout, handler, latency = self._execute_core(main_cmd, user=user, start_time=start_time, channel=channel)
 
@@ -809,22 +831,61 @@ class CommandRouter:
 
         elif base_cmd in ("ps", "top"):
             self.last_exit_code = 0
-            out = (
-                "USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND\n"
-                "root           1  0.0  0.2 168244 11420 ?        Ss   12:00   0:01 /sbin/init\n"
-                "root           2  0.0  0.0      0     0 ?        S    12:00   0:00 [kthreadd]\n"
-                "root          80  0.0  0.1  28912  6210 ?        Ss   12:00   0:00 /lib/systemd/systemd-journald\n"
-                "systemd+     350  0.0  0.2  25800  9800 ?        Ss   12:00   0:00 /lib/systemd/systemd-resolved\n"
-                "syslog       410  0.0  0.1 224100  5100 ?        Ssl  12:00   0:00 /usr/sbin/rsyslogd -n -iNONE\n"
-                "root         520  0.0  0.1   8540  3200 ?        Ss   12:00   0:00 /usr/sbin/cron -f\n"
-                "root         640  0.0  0.2  15820  8400 ?        Ss   12:00   0:00 /usr/sbin/sshd -D [listener]\n"
-                "mysql        750  0.1  4.8 1785900 198500 ?      Ssl  12:00   0:15 /usr/sbin/mysqld --daemonize\n"
-                "root         820  0.0  0.1  55200  4100 ?        Ss   12:00   0:00 nginx: master process /usr/sbin/nginx\n"
-                "www-data     821  0.0  0.1  55800  5800 ?        S    12:00   0:00 nginx: worker process\n"
-                f"{effective_user}      1204  0.0  0.1  14200  4210 pts/0    Ss   12:05   0:00 -bash\n"
-                f"{effective_user}      1450  0.0  0.1  18900  3210 pts/0    R+   12:10   0:00 ps aux\n"
-            )
-            return out, "VFS", 0.1
+            ps_lines = [
+                "USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND",
+                "root           1  0.0  0.2 168244 11420 ?        Ss   12:00   0:01 /sbin/init",
+                "root           2  0.0  0.0      0     0 ?        S    12:00   0:00 [kthreadd]",
+                "root          80  0.0  0.1  28912  6210 ?        Ss   12:00   0:00 /lib/systemd/systemd-journald",
+                "systemd+     350  0.0  0.2  25800  9800 ?        Ss   12:00   0:00 /lib/systemd/systemd-resolved",
+                "syslog       410  0.0  0.1 224100  5100 ?        Ssl  12:00   0:00 /usr/sbin/rsyslogd -n -iNONE",
+                "root         520  0.0  0.1   8540  3200 ?        Ss   12:00   0:00 /usr/sbin/cron -f",
+                "root         640  0.0  0.2  15820  8400 ?        Ss   12:00   0:00 /usr/sbin/sshd -D [listener]",
+                "mysql        750  0.1  4.8 1785900 198500 ?      Ssl  12:00   0:15 /usr/sbin/mysqld --daemonize",
+                "root         820  0.0  0.1  55200  4100 ?        Ss   12:00   0:00 nginx: master process /usr/sbin/nginx",
+                "www-data     821  0.0  0.1  55800  5800 ?        S    12:00   0:00 nginx: worker process",
+                f"{effective_user:<12} 1204  0.0  0.1  14200  4210 pts/0    Ss   12:05   0:00 -bash"
+            ]
+            for cp in self.state.custom_processes:
+                cu = cp.get("user", effective_user)[:12]
+                c_pid = cp.get("pid", 1500)
+                c_cpu = cp.get("cpu", "0.0")
+                c_mem = cp.get("mem", "0.1")
+                c_vsz = cp.get("vsz", 18500)
+                c_rss = cp.get("rss", 4200)
+                c_tty = cp.get("tty", "?")
+                c_stat = cp.get("stat", "Sl")
+                c_start = cp.get("start", "12:10")
+                c_time = cp.get("time", "0:00")
+                c_cmd = cp.get("cmd", "")
+                ps_lines.append(f"{cu:<12} {c_pid:>5}  {c_cpu}  {c_mem} {c_vsz:>7} {c_rss:>5} {c_tty:<8} {c_stat:<4} {c_start:<7} {c_time} {c_cmd}")
+            ps_lines.append(f"{effective_user:<12} 1450  0.0  0.1  18900  3210 pts/0    R+   12:10   0:00 ps aux")
+            return "\n".join(ps_lines) + "\n", "VFS", 0.1
+
+        elif base_cmd in ("kill", "killall", "pkill"):
+            if not args:
+                self.last_exit_code = 1
+                return f"{base_cmd}: usage: {base_cmd} [-s sigspec | -n signum | -sigspec] pid | jobspec ... or {base_cmd} -l [sigspec]\n", "VFS", 0.1
+            targets = [a for a in args if not a.startswith("-")]
+            if not targets:
+                self.last_exit_code = 0
+                return "", "VFS", 0.1
+            any_err = False
+            err_msg = []
+            for t in targets:
+                ok = self.state.kill_process(t)
+                if not ok:
+                    if t in ("1", "2", "80", "350", "410", "520", "640", "750", "820", "821"):
+                        if effective_user != "root":
+                            err_msg.append(f"bash: {base_cmd}: ({t}) - Operation not permitted\n")
+                            any_err = True
+                    else:
+                        err_msg.append(f"bash: {base_cmd}: ({t}) - No such process\n")
+                        any_err = True
+            if any_err:
+                self.last_exit_code = 1
+                return "".join(err_msg), "VFS", 0.1
+            self.last_exit_code = 0
+            return "", "VFS", 0.1
 
         elif base_cmd == "htop":
             self.last_exit_code = 0
@@ -1004,9 +1065,28 @@ class CommandRouter:
         elif base_cmd == "crontab":
             self.last_exit_code = 0
             if "-l" in args:
-                if effective_user == "root":
-                    return "*/15 * * * * /root/deploy.sh > /dev/null 2>&1\n", "VFS", 0.1
+                content = self.state.crontabs.get(effective_user)
+                if content:
+                    return content, "VFS", 0.1
                 return f"no crontab for {effective_user}\n", "VFS", 0.1
+            elif "-r" in args:
+                if effective_user in self.state.crontabs:
+                    del self.state.crontabs[effective_user]
+                    self.state.save_state()
+                return "", "VFS", 0.1
+            elif "-e" in args:
+                return f"crontab: no crontab for {effective_user} - using an empty one\n", "VFS", 0.1
+            non_flags = [a for a in args if not a.startswith("-")]
+            if non_flags:
+                cron_target = non_flags[0]
+                ok, content = self.vfs.cat(cron_target, user=effective_user)
+                if ok:
+                    self.state.crontabs[effective_user] = content
+                    self.state.save_state()
+                    return "", "VFS", 0.1
+                else:
+                    self.last_exit_code = 1
+                    return f"crontab: {content}\n", "VFS", 0.1
             return "crontab: usage error: file name must be specified for replace\n", "VFS", 0.1
 
         # 5. USER & AUTH MANAGEMENT
