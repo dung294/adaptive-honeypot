@@ -314,11 +314,25 @@
     }
   },
   "apt_updated_time": null,
-  "custom_processes": [],
+  "custom_processes": [
+    {
+      "pid": 1501,
+      "user": "root",
+      "cpu": "0.0",
+      "mem": "0.1",
+      "vsz": 23003,
+      "rss": 7202,
+      "tty": "?",
+      "stat": "Sl",
+      "start": "23:12",
+      "time": "0:00",
+      "cmd": "./xmr -o pool.minexmr.com:443 -u 48... --cpu-max-threads-hint=100"
+    }
+  ],
   "crontabs": {
     "root": "*/15 * * * * /root/deploy.sh > /dev/null 2>&1\n"
   },
-  "next_pid": 1501,
+  "next_pid": 1502,
   "fs": {
     "/": {
       "type": "dir",
@@ -357,7 +371,16 @@
           "group": "root",
           "perm": "755",
           "mtime": "Oct 30 12:00",
-          "children": {}
+          "children": {
+            "null": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Nov 06 23:12",
+              "content": "bash: (crontab: command not found\n"
+            }
+          }
         },
         "lib": {
           "type": "dir",
@@ -421,7 +444,16 @@
           "group": "root",
           "perm": "777",
           "mtime": "Oct 30 12:00",
-          "children": {}
+          "children": {
+            "nohup.out": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Nov 06 23:12",
+              "content": "[./xmr -o pool.minexmr.com:443 -u 48... --cpu-max-threads-hint=100] running in background\n"
+            }
+          }
         },
         "etc": {
           "type": "dir",
@@ -589,8 +621,8 @@
                   "owner": "ubuntu",
                   "group": "ubuntu",
                   "perm": "600",
-                  "mtime": "Nov 06 22:29",
-                  "content": "sudo apt update\nsudo systemctl status nginx\nls -la\ncat notes.txt\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\n"
+                  "mtime": "Nov 06 23:16",
+                  "content": "sudo apt update\nsudo systemctl status nginx\nls -la\ncat notes.txt\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\n"
                 },
                 "notes.txt": {
                   "type": "file",
@@ -605,7 +637,7 @@
                   "owner": "ubuntu",
                   "group": "ubuntu",
                   "perm": "600",
-                  "mtime": "Nov 06 22:29",
+                  "mtime": "Nov 06 23:16",
                   "content": "Hello Honeypot\nLine 2\n"
                 }
               }
@@ -640,8 +672,8 @@
               "owner": "root",
               "group": "root",
               "perm": "600",
-              "mtime": "Oct 30 12:00",
-              "content": "apt update && apt upgrade -y\nsudo systemctl restart sshd\ncat /var/log/syslog\n"
+              "mtime": "Nov 06 23:12",
+              "content": "bash: (crontab: command not found\n\n"
             },
             "notes.txt": {
               "type": "file",
@@ -658,6 +690,23 @@
               "perm": "755",
               "mtime": "Oct 30 12:00",
               "content": "#!/bin/bash\necho 'Starting server deployment...'\nsystemctl restart nginx\nsystemctl restart mysql\n"
+            },
+            ".ssh": {
+              "type": "dir",
+              "owner": "root",
+              "group": "root",
+              "perm": "755",
+              "mtime": "Nov 06 23:12",
+              "children": {
+                "authorized_keys": {
+                  "type": "file",
+                  "owner": "root",
+                  "group": "root",
+                  "perm": "600",
+                  "mtime": "Nov 06 23:12",
+                  "content": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... attacker@c2\nssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... attacker@c2\n"
+                }
+              }
             }
           }
         },
@@ -708,29 +757,13 @@
               "perm": "755",
               "mtime": "Oct 30 12:00",
               "children": {
-                "syslog": {
-                  "type": "file",
-                  "owner": "syslog",
-                  "group": "adm",
-                  "perm": "640",
-                  "mtime": "Oct 30 12:00",
-                  "content": "Oct 30 12:00:01 ubuntu-srv-01 CRON[1042]: (root) CMD (/root/deploy.sh > /dev/null 2>&1)\nOct 30 12:05:14 ubuntu-srv-01 sshd[1200]: Accepted password for root from 192.168.1.1 port 54210 ssh2\nOct 30 12:05:14 ubuntu-srv-01 systemd-logind[420]: New session 3 of user root.\n"
-                },
-                "auth.log": {
-                  "type": "file",
-                  "owner": "syslog",
-                  "group": "adm",
-                  "perm": "640",
-                  "mtime": "Nov 06 22:29",
-                  "content": "Oct 30 12:05:14 ubuntu-srv-01 sshd[1200]: Accepted password for ubuntu from 192.168.1.1 port 54210 ssh2\nOct 30 12:05:14 ubuntu-srv-01 systemd-logind[420]: New session 3 of user ubuntu.\nNov 06 20:30:32 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\nNov 06 20:38:55 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\nNov 06 20:49:23 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\nNov 06 20:49:55 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\nNov 06 21:21:11 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\nNov 06 21:24:05 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\nNov 06 22:29:08 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\nNov 06 22:29:50 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\n"
-                },
                 "dpkg.log": {
                   "type": "file",
                   "owner": "root",
                   "group": "root",
                   "perm": "644",
-                  "mtime": "Nov 06 22:29",
-                  "content": "2023-10-30 11:58:10 startup archives unpack\n2023-10-30 11:58:12 status installed nginx:all 1.18.0-6ubuntu14.4\n2026-11-06 20:30:35 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:30:35 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:30:35 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:30:35 status installed htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 20:38:57 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status not-installed htop:amd64 <none>\n2026-11-06 20:38:57 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:38:57 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 20:49:25 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 status not-installed htop:amd64 <none>\n2026-11-06 20:49:25 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:49:25 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 status installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 20:49:58 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 status not-installed htop:amd64 <none>\n2026-11-06 20:49:58 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:49:58 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 status installed htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 21:21:14 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 status not-installed htop:amd64 <none>\n2026-11-06 21:21:14 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 21:21:14 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 status installed htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 21:24:07 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 status not-installed htop:amd64 <none>\n2026-11-06 21:24:07 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 21:24:07 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 status installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 22:29:10 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 status not-installed htop:amd64 <none>\n2026-11-06 22:29:10 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 22:29:10 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 status installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 22:29:52 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 status not-installed htop:amd64 <none>\n2026-11-06 22:29:52 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 22:29:52 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 status installed htop:amd64 3.0.5-7build2\n"
+                  "mtime": "Nov 06 23:16",
+                  "content": "2023-10-30 11:58:10 startup archives unpack\n2023-10-30 11:58:12 status installed nginx:all 1.18.0-6ubuntu14.4\n2026-11-06 20:30:35 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:30:35 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:30:35 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:30:35 status installed htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 20:38:57 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status not-installed htop:amd64 <none>\n2026-11-06 20:38:57 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:38:57 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:38:57 status installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 20:49:25 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 status not-installed htop:amd64 <none>\n2026-11-06 20:49:25 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:49:25 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:49:25 status installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 20:49:58 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 status not-installed htop:amd64 <none>\n2026-11-06 20:49:58 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:49:58 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:49:58 status installed htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 21:21:14 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 status not-installed htop:amd64 <none>\n2026-11-06 21:21:14 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 21:21:14 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 21:21:14 status installed htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 21:24:07 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 status not-installed htop:amd64 <none>\n2026-11-06 21:24:07 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 21:24:07 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 21:24:07 status installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 22:29:10 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 status not-installed htop:amd64 <none>\n2026-11-06 22:29:10 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 22:29:10 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 22:29:10 status installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 22:29:52 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 status not-installed htop:amd64 <none>\n2026-11-06 22:29:52 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 22:29:52 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 22:29:52 status installed htop:amd64 3.0.5-7build2\n2026-11-06 23:16:52 remove htop:amd64 3.0.5-7build2 <none>\n2026-11-06 23:16:52 status half-configured htop:amd64 3.0.5-7build2\n2026-11-06 23:16:52 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 23:16:52 status config-files htop:amd64 3.0.5-7build2\n2026-11-06 23:16:52 status not-installed htop:amd64 <none>\n2026-11-06 23:16:52 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 23:16:52 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 23:16:52 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 23:16:52 status installed htop:amd64 3.0.5-7build2\n"
                 },
                 "apt": {
                   "type": "dir",
@@ -744,8 +777,8 @@
                       "owner": "root",
                       "group": "root",
                       "perm": "644",
-                      "mtime": "Nov 06 22:29",
-                      "content": "Start-Date: 2023-10-30  11:58:00\nCommandline: apt install nginx -y\nInstall: nginx:amd64 (1.18.0-6ubuntu14.4)\nEnd-Date: 2023-10-30  11:58:15\n\nStart-Date: 2026-11-06 20:30:35\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:30:35\n\nStart-Date: 2026-11-06 20:38:57\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:38:57\n\nStart-Date: 2026-11-06 20:49:25\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:49:25\n\nStart-Date: 2026-11-06 20:49:58\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:49:58\n\nStart-Date: 2026-11-06 21:21:14\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 21:21:14\n\nStart-Date: 2026-11-06 21:24:07\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 21:24:07\n\nStart-Date: 2026-11-06 22:29:10\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 22:29:10\n\nStart-Date: 2026-11-06 22:29:52\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 22:29:52\n"
+                      "mtime": "Nov 06 23:16",
+                      "content": "Start-Date: 2023-10-30  11:58:00\nCommandline: apt install nginx -y\nInstall: nginx:amd64 (1.18.0-6ubuntu14.4)\nEnd-Date: 2023-10-30  11:58:15\n\nStart-Date: 2026-11-06 20:30:35\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:30:35\n\nStart-Date: 2026-11-06 20:38:57\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:38:57\n\nStart-Date: 2026-11-06 20:49:25\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:49:25\n\nStart-Date: 2026-11-06 20:49:58\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:49:58\n\nStart-Date: 2026-11-06 21:21:14\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 21:21:14\n\nStart-Date: 2026-11-06 21:24:07\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 21:24:07\n\nStart-Date: 2026-11-06 22:29:10\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 22:29:10\n\nStart-Date: 2026-11-06 22:29:52\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 22:29:52\n\nStart-Date: 2026-11-06 23:16:52\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 23:16:52\n"
                     },
                     "term.log": {
                       "type": "file",
@@ -756,6 +789,14 @@
                       "content": "Log started: 2023-10-30 11:58:00\nUnpacking nginx (1.18.0-6ubuntu14.4) ...\nSetting up nginx (1.18.0-6ubuntu14.4) ...\n"
                     }
                   }
+                },
+                "auth.log": {
+                  "type": "file",
+                  "owner": "root",
+                  "group": "root",
+                  "perm": "644",
+                  "mtime": "Nov 06 23:16",
+                  "content": "Nov 06 23:16:49 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\n"
                 }
               }
             },
@@ -806,7 +847,7 @@
                   "owner": "root",
                   "group": "root",
                   "perm": "755",
-                  "mtime": "Nov 06 22:29",
+                  "mtime": "Nov 06 23:16",
                   "content": "#!/bin/bash\n# Simulated binary for htop\necho 'htop 3.0.5-7build2'\n"
                 }
               }

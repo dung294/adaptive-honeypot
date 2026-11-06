@@ -4,6 +4,7 @@ import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from config import EVENT_LOG_FILE, LOGS_DIR
+from threat_intel.ml_exporter import MLLogExporter
 
 SESSIONS_LOG_FILE = LOGS_DIR / "sessions.json"
 
@@ -17,6 +18,10 @@ class HoneypotLogger:
         self.log_path = log_path
         self.sessions_path = sessions_path
         self.active_sessions: Dict[str, Dict[str, Any]] = {}
+        try:
+            self.ml_exporter = MLLogExporter(dataset_role="benchmark")
+        except Exception:
+            self.ml_exporter = None
 
     def _write_event(self, event_record: Dict[str, Any]):
         try:
@@ -156,6 +161,15 @@ class HoneypotLogger:
             sess["status"] = "Auth_Failed"
             self._flush_session_to_json(session_id)
 
+        if self.ml_exporter:
+            try:
+                if success:
+                    self.ml_exporter.emit_login(session_id, source_ip, source_port, username)
+                else:
+                    self.ml_exporter.emit_login_failed(session_id, source_ip, source_port, username)
+            except Exception:
+                pass
+
         return event_record
 
     def log_interaction(
@@ -203,6 +217,12 @@ class HoneypotLogger:
             "latency_ms": round(latency_ms, 2)
         })
 
+        if self.ml_exporter:
+            try:
+                self.ml_exporter.emit_command(session_id, source_ip, source_port, username, command, clean_output)
+            except Exception:
+                pass
+
         return event_record
 
     def log_session_end(
@@ -239,5 +259,12 @@ class HoneypotLogger:
         sess["duration_seconds"] = round(duration_sec, 2)
         sess["status"] = "Closed"
         self._flush_session_to_json(session_id)
+
+        if self.ml_exporter:
+            try:
+                self.ml_exporter.emit_session_closed(session_id, source_ip, source_port, username)
+                self.ml_exporter.finalize_run()
+            except Exception:
+                pass
 
         return event_record

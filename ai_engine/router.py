@@ -1211,7 +1211,7 @@ class CommandRouter:
             return self.cache[cache_key], "CACHE", (time.perf_counter() - start_time) * 1000
 
         # 10. LLM FALLBACK FOR UNCOMMON COMMANDS
-        output = self.llm_client.query(clean_cmd, cwd=self.vfs.pwd(), user=effective_user)
+        output = self.llm_client.query(clean_cmd, cwd=self.vfs.pwd(), user=effective_user) if self.llm_client else ""
         latency = (time.perf_counter() - start_time) * 1000
         if output:
             self.cache[cache_key] = output
