@@ -1,0 +1,11 @@
+# ==============================================================================
+# ADMIN AUTHORIZED KEYS (Dành cho Quản trị viên kết nối trực tiếp vào Máy Thật)
+# ==============================================================================
+# Dán các Public Key (id_rsa.pub hoặc id_ed25519.pub) của Admin vào tệp này.
+# Bất kỳ ai kết nối SSH cổng 22 với khóa khớp trong tệp này sẽ được Passthrough
+# trực tiếp vào dịch vụ OpenSSH thật của Host (127.0.0.1:22022).
+#
+# Định dạng:
+# ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... admin@workstation
+# ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... admin@macbook
+# ==============================================================================
