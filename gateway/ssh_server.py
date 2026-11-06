@@ -36,6 +36,8 @@ class HoneypotSSHInterface(paramiko.ServerInterface):
         self.session_id = str(uuid.uuid4())
         self.is_admin = False
         self.auth_type = "password"
+        self.is_exec = False
+        self.exec_command = ""
         self.event = threading.Event()
         self.proxy_session = None
 
@@ -123,6 +125,13 @@ class HoneypotSSHInterface(paramiko.ServerInterface):
         return True
 
     def check_channel_shell_request(self, channel):
+        self.is_exec = False
+        self.event.set()
+        return True
+
+    def check_channel_exec_request(self, channel, command):
+        self.is_exec = True
+        self.exec_command = command.decode("utf-8", errors="ignore") if isinstance(command, bytes) else str(command)
         self.event.set()
         return True
 
@@ -179,7 +188,7 @@ class SSHGatewayServer:
                     term_height=server_interface.term_height
                 )
                 server_interface.proxy_session = proxy
-                proxy.run()
+                proxy.run(is_exec=server_interface.is_exec, exec_command=server_interface.exec_command)
             else:
                 # Bắt đầu phiên Terminal Honeypot cho Attacker
                 session = TerminalSession(

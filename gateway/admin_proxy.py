@@ -29,7 +29,7 @@ class AdminProxySession:
         self.backend_channel = None
         self.running = False
 
-    def run(self):
+    def run(self, is_exec: bool = False, exec_command: str = ""):
         print(f"[🛡️ ADMIN PASSTHROUGH] Đang mở kênh kết nối an toàn tới Host thật ({REAL_SSH_HOST}:{REAL_SSH_PORT})...")
         try:
             self.backend_client = paramiko.SSHClient()
@@ -48,11 +48,16 @@ class AdminProxySession:
 
             self.backend_client.connect(**connect_kwargs)
             
-            self.backend_channel = self.backend_client.invoke_shell(
-                term=self.term,
-                width=self.term_width,
-                height=self.term_height
-            )
+            if is_exec:
+                transport = self.backend_client.get_transport()
+                self.backend_channel = transport.open_session()
+                self.backend_channel.exec_command(exec_command)
+            else:
+                self.backend_channel = self.backend_client.invoke_shell(
+                    term=self.term,
+                    width=self.term_width,
+                    height=self.term_height
+                )
             print(f"[✅ ADMIN PASSTHROUGH] Đã thiết lập kênh cầu nối (Bridge) thành công cho Admin từ {self.client_ip}:{self.client_port}!")
 
             self.running = True
