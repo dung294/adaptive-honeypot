@@ -32,6 +32,7 @@ quarantine/*
 logs/*
 !logs/.gitkeep
 !logs/sessions.json
+!logs/events.jsonl
 !logs/ml_benchmark_manifest.json
 !logs/ml_benchmark_batch_raw.jsonl
 *.log
