@@ -1,0 +1,160 @@
+[
+  {
+    "scenario_id": "ssh-discovery-001",
+    "protocol": "ssh",
+    "ground_truth_label": "System & Network Environment Discovery",
+    "description": "Attacker thực hiện thu thập thông tin danh tính, cấu hình mạng, phiên bản hệ điều hành và tiến trình đang chạy.",
+    "expected_mitre": {
+      "tactics": [
+        "Discovery"
+      ],
+      "techniques": [
+        {
+          "id": "T1082",
+          "name": "System Information Discovery"
+        },
+        {
+          "id": "T1033",
+          "name": "System Owner/User Discovery"
+        },
+        {
+          "id": "T1016",
+          "name": "System Network Configuration Discovery"
+        },
+        {
+          "id": "T1057",
+          "name": "Process Discovery"
+        }
+      ]
+    }
+  },
+  {
+    "scenario_id": "ssh-bruteforce-001",
+    "protocol": "ssh",
+    "ground_truth_label": "Credential Access / SSH Password Spraying",
+    "description": "Attacker thực hiện quét và dò mật khẩu SSH hàng loạt trước khi đoán trúng thông tin đăng nhập.",
+    "expected_mitre": {
+      "tactics": [
+        "Credential Access"
+      ],
+      "techniques": [
+        {
+          "id": "T1110.001",
+          "name": "Brute Force: Password Guessing"
+        },
+        {
+          "id": "T1110.003",
+          "name": "Brute Force: Password Spraying"
+        }
+      ]
+    }
+  },
+  {
+    "scenario_id": "ssh-privilege-escalation-001",
+    "protocol": "ssh",
+    "ground_truth_label": "Privilege Escalation via Sudo Misconfiguration",
+    "description": "Attacker kiểm tra quyền sudo và leo thang đặc quyền từ user thường lên root.",
+    "expected_mitre": {
+      "tactics": [
+        "Privilege Escalation",
+        "Credential Access"
+      ],
+      "techniques": [
+        {
+          "id": "T1548.003",
+          "name": "Abuse Elevation Control Mechanism: Sudo and Sudoers"
+        },
+        {
+          "id": "T1003.008",
+          "name": "OS Credential Dumping: /etc/passwd and /etc/shadow"
+        }
+      ]
+    }
+  },
+  {
+    "scenario_id": "ssh-persistence-001",
+    "protocol": "ssh",
+    "ground_truth_label": "Persistence Mechanism Establishment",
+    "description": "Attacker cắm SSH key vào authorized_keys và lập lịch cronjob để duy trì thâm nhập.",
+    "expected_mitre": {
+      "tactics": [
+        "Persistence"
+      ],
+      "techniques": [
+        {
+          "id": "T1098.004",
+          "name": "Account Manipulation: SSH Authorized Keys"
+        },
+        {
+          "id": "T1053.003",
+          "name": "Scheduled Task/Job: Cron"
+        }
+      ]
+    }
+  },
+  {
+    "scenario_id": "ssh-malware-download-001",
+    "protocol": "ssh",
+    "ground_truth_label": "Ingress Tool Transfer / Malware Staging",
+    "description": "Attacker tải payload mã độc botnet/miner về thư mục tạm /tmp và cấp quyền thực thi.",
+    "expected_mitre": {
+      "tactics": [
+        "Command and Control",
+        "Defense Evasion"
+      ],
+      "techniques": [
+        {
+          "id": "T1105",
+          "name": "Ingress Tool Transfer"
+        },
+        {
+          "id": "T1222.002",
+          "name": "File and Directory Permissions Modification: Linux and Mac Permissions Analysis"
+        }
+      ]
+    }
+  },
+  {
+    "scenario_id": "ssh-mining-execution-001",
+    "protocol": "ssh",
+    "ground_truth_label": "Resource Hijacking / Background Cryptomining",
+    "description": "Attacker khởi chạy tiến trình đào coin dưới nền bằng nohup và kiểm tra trạng thái CPU.",
+    "expected_mitre": {
+      "tactics": [
+        "Execution",
+        "Impact"
+      ],
+      "techniques": [
+        {
+          "id": "T1059.004",
+          "name": "Command and Scripting Interpreter: Unix Shell"
+        },
+        {
+          "id": "T1496",
+          "name": "Resource Hijacking"
+        }
+      ]
+    }
+  },
+  {
+    "scenario_id": "ssh-defense-evasion-001",
+    "protocol": "ssh",
+    "ground_truth_label": "Defense Evasion / Indicator Removal on Host",
+    "description": "Attacker xóa lịch sử lệnh và xóa trắng các tệp nhật ký hệ thống để che giấu dấu vết.",
+    "expected_mitre": {
+      "tactics": [
+        "Defense Evasion"
+      ],
+      "techniques": [
+        {
+          "id": "T1070.003",
+          "name": "Indicator Removal on Host: Clear Command History"
+        },
+        {
+          "id": "T1070.002",
+          "name": "Indicator Removal on Host: Clear Linux or Mac System Logs"
+        }
+      ]
+    }
+  }
+]

@@ -64,7 +64,7 @@ def run_scenario(
                 username=u,
                 scenario_id=sid
             )
-            time.sleep(0.05)
+            # time.sleep(0.001)
 
     # 2. Sự kiện Đăng nhập thành công (login)
     login_user = "root"
@@ -97,7 +97,7 @@ def run_scenario(
             command_output=output,
             scenario_id=sid
         )
-        time.sleep(0.05)
+        # time.sleep(0.001)
 
     # 4. Sự kiện Kết thúc phiên (BẮT BUỘC có session_closed để máy ML nhận diện đóng session)
     exporter.emit_session_closed(
@@ -162,6 +162,7 @@ def main():
     parser.add_argument("--campaign-id", type=str, default="camp-honeypot-eval-2026", help="Mã campaign kiểm thử")
     parser.add_argument("--role", type=str, choices=["train", "test", "benchmark", "inference"], default="train", help="Vai trò dataset: train hoặc test")
     parser.add_argument("--scenarios", type=str, default="all", help="Danh sách scenario_id (phân tách dấu phẩy hoặc 'all')")
+    parser.add_argument("--iterations", type=int, default=1, help="Số lần lặp lại kịch bản (mỗi lần lặp tạo session mới với IP/port khác nhau)")
     parser.add_argument("--output-dir", type=str, default=str(DEFAULT_DATA_RAW_DIR), help="Thư mục xuất data/raw")
     parser.add_argument("--bridge-url", type=str, default=None, help="URL REST API của máy ML trên mạng bridge (tùy chọn)")
 
@@ -195,20 +196,21 @@ def main():
     router = CommandRouter(vfs, None)
 
     base_ip_num = 20
-    for idx, sid in enumerate(scenarios_to_run, start=1):
-        meta = SCENARIOS_CATALOG[sid]
-        sess_id = f"session-{exporter.run_id}-{idx:03d}"
-        source_ip = f"192.168.56.{base_ip_num + idx}"
-        source_port = 50000 + idx * 73
+    for it in range(1, args.iterations + 1):
+        for idx, sid in enumerate(scenarios_to_run, start=1):
+            meta = SCENARIOS_CATALOG[sid]
+            sess_id = f"session-{exporter.run_id}-{it:03d}-{idx:03d}" if args.iterations > 1 else f"session-{exporter.run_id}-{idx:03d}"
+            source_ip = f"192.168.56.{(base_ip_num + idx + it * 3) % 240 + 10}"
+            source_port = 40000 + (it * 100 + idx * 73) % 20000
 
-        run_scenario(
-            exporter=exporter,
-            scenario_meta=meta,
-            router=router,
-            source_ip=source_ip,
-            source_port=source_port,
-            session_id=sess_id
-        )
+            run_scenario(
+                exporter=exporter,
+                scenario_meta=meta,
+                router=router,
+                source_ip=source_ip,
+                source_port=source_port,
+                session_id=sess_id
+            )
 
     # Hoàn thành run và tạo manifests
     summary = exporter.finalize_run()

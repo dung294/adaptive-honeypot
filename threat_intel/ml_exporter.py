@@ -207,6 +207,11 @@ class MLLogExporter:
         self.run_dir.mkdir(parents=True, exist_ok=True)
         
         self.events_file = self.run_dir / "events.jsonl"
+        if self.events_file.exists():
+            try:
+                self.events_file.unlink()
+            except Exception:
+                pass
         self.run_manifest_file = self.run_dir / "run_manifest.json"
         self.scenario_manifest_file = self.run_dir / "scenario_manifest.json"
         
