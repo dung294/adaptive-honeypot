@@ -1,5 +1,233 @@
 [
   {
+    "session_id": "5769796b-9c46-4002-b0bc-67868fcc12b7",
+    "source_ip": "127.0.0.1",
+    "source_port": 50741,
+    "username": "ubuntu",
+    "passwords_tried": [
+      "123"
+    ],
+    "auth_status": "Success",
+    "start_time": "2026-11-06T15:29:49.672244+00:00",
+    "end_time": "2026-11-06T15:29:52.223489+00:00",
+    "duration_seconds": 2.55,
+    "command_count": 4,
+    "status": "Closed",
+    "commands": [
+      {
+        "step": 1,
+        "timestamp": "2026-11-06T15:29:49.702012+00:00",
+        "command": "whoami",
+        "output": "ubuntu",
+        "handler_type": "VFS",
+        "latency_ms": 0.19
+      },
+      {
+        "step": 2,
+        "timestamp": "2026-11-06T15:29:50.805720+00:00",
+        "command": "whoami",
+        "output": "root",
+        "handler_type": "VFS",
+        "latency_ms": 0.08
+      },
+      {
+        "step": 3,
+        "timestamp": "2026-11-06T15:29:51.114845+00:00",
+        "command": "cat /etc/shadow | grep root",
+        "output": "root:$6$salt$a665a45920422f9d417e4867:19600:0:99999:7:::",
+        "handler_type": "PIPELINE",
+        "latency_ms": 0.23
+      },
+      {
+        "step": 4,
+        "timestamp": "2026-11-06T15:29:51.913253+00:00",
+        "command": "whoami",
+        "output": "ubuntu",
+        "handler_type": "VFS",
+        "latency_ms": 0.09
+      }
+    ]
+  },
+  {
+    "session_id": "dc9ccc8e-141f-406a-bb66-669a345b67a9",
+    "source_ip": "192.168.1.100",
+    "source_port": 54321,
+    "username": "ubuntu",
+    "passwords_tried": [
+      "wrongpass999_xyz"
+    ],
+    "auth_status": "Failed",
+    "start_time": "2026-11-06T15:29:48.614839+00:00",
+    "end_time": "2026-11-06T15:29:48.614525+00:00",
+    "duration_seconds": 0.0,
+    "command_count": 0,
+    "status": "Auth_Failed",
+    "commands": []
+  },
+  {
+    "session_id": "938e1360-5a8e-4ef3-91c4-1891eac3e0d2",
+    "source_ip": "192.168.1.100",
+    "source_port": 54321,
+    "username": "ubuntu",
+    "passwords_tried": [
+      "wrongpass999_xyz"
+    ],
+    "auth_status": "Failed",
+    "start_time": "2026-11-06T15:29:42.068507+00:00",
+    "end_time": "2026-11-06T15:29:42.068282+00:00",
+    "duration_seconds": 0.0,
+    "command_count": 0,
+    "status": "Auth_Failed",
+    "commands": []
+  },
+  {
+    "session_id": "b4a4aade-f2d8-4560-8095-77939355c37a",
+    "source_ip": "127.0.0.1",
+    "source_port": 36987,
+    "username": "ubuntu",
+    "passwords_tried": [
+      "123"
+    ],
+    "auth_status": "Success",
+    "start_time": "2026-11-06T15:29:07.665042+00:00",
+    "end_time": "2026-11-06T15:29:10.190036+00:00",
+    "duration_seconds": 2.52,
+    "command_count": 4,
+    "status": "Closed",
+    "commands": [
+      {
+        "step": 1,
+        "timestamp": "2026-11-06T15:29:07.670178+00:00",
+        "command": "whoami",
+        "output": "ubuntu",
+        "handler_type": "VFS",
+        "latency_ms": 0.2
+      },
+      {
+        "step": 2,
+        "timestamp": "2026-11-06T15:29:08.772615+00:00",
+        "command": "whoami",
+        "output": "root",
+        "handler_type": "VFS",
+        "latency_ms": 0.06
+      },
+      {
+        "step": 3,
+        "timestamp": "2026-11-06T15:29:09.080740+00:00",
+        "command": "cat /etc/shadow | grep root",
+        "output": "root:$6$salt$a665a45920422f9d417e4867:19600:0:99999:7:::",
+        "handler_type": "PIPELINE",
+        "latency_ms": 0.32
+      },
+      {
+        "step": 4,
+        "timestamp": "2026-11-06T15:29:09.880496+00:00",
+        "command": "whoami",
+        "output": "ubuntu",
+        "handler_type": "VFS",
+        "latency_ms": 0.07
+      }
+    ]
+  },
+  {
+    "session_id": "add40f32-dc2d-4c00-a42f-3e7b4185c64a",
+    "source_ip": "127.0.0.1",
+    "source_port": 57945,
+    "username": "ubuntu",
+    "passwords_tried": [
+      "123"
+    ],
+    "auth_status": "Success",
+    "start_time": "2026-11-06T14:24:04.919077+00:00",
+    "end_time": "2026-11-06T14:24:07.467007+00:00",
+    "duration_seconds": 2.55,
+    "command_count": 4,
+    "status": "Closed",
+    "commands": [
+      {
+        "step": 1,
+        "timestamp": "2026-11-06T14:24:04.959310+00:00",
+        "command": "whoami",
+        "output": "ubuntu",
+        "handler_type": "VFS",
+        "latency_ms": 0.19
+      },
+      {
+        "step": 2,
+        "timestamp": "2026-11-06T14:24:06.062681+00:00",
+        "command": "whoami",
+        "output": "root",
+        "handler_type": "VFS",
+        "latency_ms": 0.05
+      },
+      {
+        "step": 3,
+        "timestamp": "2026-11-06T14:24:06.364455+00:00",
+        "command": "cat /etc/shadow | grep root",
+        "output": "root:$6$salt$a665a45920422f9d417e4867:19600:0:99999:7:::",
+        "handler_type": "PIPELINE",
+        "latency_ms": 0.07
+      },
+      {
+        "step": 4,
+        "timestamp": "2026-11-06T14:24:07.164527+00:00",
+        "command": "whoami",
+        "output": "ubuntu",
+        "handler_type": "VFS",
+        "latency_ms": 0.04
+      }
+    ]
+  },
+  {
+    "session_id": "3f9c6e5f-c955-4caf-9943-4473d85f4679",
+    "source_ip": "127.0.0.1",
+    "source_port": 30100,
+    "username": "ubuntu",
+    "passwords_tried": [
+      "123"
+    ],
+    "auth_status": "Success",
+    "start_time": "2026-11-06T14:21:11.026554+00:00",
+    "end_time": "2026-11-06T14:21:13.551961+00:00",
+    "duration_seconds": 2.52,
+    "command_count": 4,
+    "status": "Closed",
+    "commands": [
+      {
+        "step": 1,
+        "timestamp": "2026-11-06T14:21:11.031620+00:00",
+        "command": "whoami",
+        "output": "ubuntu",
+        "handler_type": "VFS",
+        "latency_ms": 0.18
+      },
+      {
+        "step": 2,
+        "timestamp": "2026-11-06T14:21:12.135884+00:00",
+        "command": "whoami",
+        "output": "root",
+        "handler_type": "VFS",
+        "latency_ms": 0.11
+      },
+      {
+        "step": 3,
+        "timestamp": "2026-11-06T14:21:12.441890+00:00",
+        "command": "cat /etc/shadow | grep root",
+        "output": "root:$6$salt$a665a45920422f9d417e4867:19600:0:99999:7:::",
+        "handler_type": "PIPELINE",
+        "latency_ms": 0.22
+      },
+      {
+        "step": 4,
+        "timestamp": "2026-11-06T14:21:13.239408+00:00",
+        "command": "whoami",
+        "output": "ubuntu",
+        "handler_type": "VFS",
+        "latency_ms": 0.14
+      }
+    ]
+  },
+  {
     "session_id": "242b8ecf-073d-4e69-8022-7a4d4e25411e",
     "source_ip": "127.0.0.1",
     "source_port": 46206,
