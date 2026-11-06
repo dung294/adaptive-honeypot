@@ -39,7 +39,7 @@ SERVER_KEY_PATH = BASE_DIR / "server.key"
 # Cấu hình SSH Multiplexer (Admin Passthrough vs Honeypot Sandbox)
 ENABLE_ADMIN_PASSTHROUGH = os.getenv("ENABLE_ADMIN_PASSTHROUGH", "true").lower() in ("true", "1", "yes")
 REAL_SSH_HOST = os.getenv("REAL_SSH_HOST", "127.0.0.1")
-REAL_SSH_PORT = int(os.getenv("REAL_SSH_PORT", "22022"))
+REAL_SSH_PORT = int(os.getenv("REAL_SSH_PORT", "22"))
 REAL_SSH_USER = os.getenv("REAL_SSH_USER", "nhuthang")
 REAL_SSH_PASSWORD = os.getenv("REAL_SSH_PASSWORD", "123")
 REAL_SSH_KEY_PATH = os.getenv("REAL_SSH_KEY_PATH", "")
