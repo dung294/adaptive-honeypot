@@ -1,9 +1,17 @@
 import os
+import sys
 import socket
 import threading
 import paramiko
 import uuid
 from pathlib import Path
+
+# Ensure UTF-8 output on Windows consoles
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 from gateway.terminal_session import TerminalSession
 from threat_intel.logger import HoneypotLogger
 from config import (
@@ -118,11 +126,11 @@ class SSHGatewayServer:
         sock.listen(100)
         
         print("=" * 70)
-        print("🚀 [NEXT-GEN ADAPTIVE HONEYPOT GATEWAY] ĐANG HOẠT ĐỘNG...")
-        print(f"🌐 Lắng nghe tại: {self.host}:{self.port}")
-        print(f"🛡️  Kiến trúc Deception: Stateful VFS + LLM + Fast-Path + Tab Completion")
-        print(f"🔐 Mật khẩu bẫy chấp nhận: {len(HONEYPOT_ALLOWED_PASSWORDS)} mẫu mật khẩu trong cấu hình")
-        print(f"📊 Nhật ký sự kiện lưu tại: {self.logger.log_path}")
+        print("[*] [NEXT-GEN ADAPTIVE HONEYPOT GATEWAY] ĐANG HOẠT ĐỘNG...")
+        print(f"[*] Lắng nghe tại: {self.host}:{self.port}")
+        print(f"[+] Kiến trúc Deception: Stateful VFS + LLM + Fast-Path + Tab Completion")
+        print(f"[*] Mật khẩu bẫy chấp nhận: {len(HONEYPOT_ALLOWED_PASSWORDS)} mẫu mật khẩu trong cấu hình")
+        print(f"[*] Nhật ký sự kiện lưu tại: {self.logger.log_path}")
         print("=" * 70)
 
         try:

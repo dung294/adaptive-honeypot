@@ -3,7 +3,9 @@ import sys
 import uuid
 import time
 from pathlib import Path
+from typing import List, Tuple, Optional
 from gateway.vfs import VirtualFileSystem
+from gateway.nano_editor import NanoEditor
 from ai_engine.router import CommandRouter
 from ai_engine.llm_client import LLMClient
 from threat_intel.logger import HoneypotLogger
@@ -17,11 +19,20 @@ WELCOME_BANNER = (
     f"System information as of Fri Oct 30 20:00:00 UTC 2026\r\n\r\n"
     f"  System load:  0.08               Processes:             102\r\n"
     f"  Usage of /:   18.4% of 38.58GB   Users logged in:       1\r\n"
-    f"  Memory usage: 22%                IPv4 address for eth0: 192.168.1.100\r\n\r\n"
+    f"  Memory usage: 22%                IPv4 address for eth0: 192.168.101.218\r\n\r\n"
     f"Last login: Fri Oct 30 19:30:15 2026 from 192.168.1.1\r\n"
 )
 
 class TerminalSession:
+    """
+    Quản lý phiên tương tác SSH PTY siêu chân thực chuẩn Linux Ubuntu 22.04 LTS.
+    - Hỗ trợ đầy đủ phím mũi tên, Readline, con trỏ, Tab completion, Ctrl+C/D/L/A/E/U/K.
+    - Cơ chế nâng quyền SUDO & SU có mật khẩu ảo, sudoers, auth cache 5 phút, timeout và đếm số lần sai.
+    - Hỗ trợ user stack: 'sudo su' nâng lên root, gõ 'exit' hạ xuống user ban đầu thay vì ngắt kết nối SSH.
+    - Tích hợp trình soạn thảo TUI tương tác GNU nano trực tiếp qua channel PTY.
+    - Đồng bộ lịch sử ~/.bash_history và các file log auth.log, syslog, dpkg.log.
+    """
+
     def __init__(self, channel, client_ip: str, client_port: int, username: str, logger: HoneypotLogger, session_id: str = None):
         self.channel = channel
         self.client_ip = client_ip
@@ -33,14 +44,34 @@ class TerminalSession:
         self.commands_count = 0
         self.normal_exit = False
         
-        # Khởi tạo cây tệp ảo VFS và Router cho phiên
+        # User elevation stack: [(previous_user, previous_cwd)]
+        self.user_stack: List[Tuple[str, str]] = []
+        self.sudo_auth_timestamp: float = 0.0
+        self.sudo_auth_timeout: float = 300.0  # 5 phút
+
+        # Khởi tạo cây tệp ảo VFS và Router
         self.vfs = VirtualFileSystem(hostname=HOSTNAME, user=self.username)
         self.llm_client = LLMClient()
         self.router = CommandRouter(self.vfs, self.llm_client)
 
-        # Lịch sử dòng lệnh chuẩn (có sẵn lệnh của admin trước đó để tạo cảm giác thực tế)
-        self.history = ["ls -la", "uptime", "cat /var/log/syslog"]
+        # Đọc lịch sử ~/.bash_history nếu có
+        self.history = self._load_user_history()
         self.history_idx = len(self.history)
+
+    def _load_user_history(self) -> List[str]:
+        hist_path = "/root/.bash_history" if self.username == "root" else f"/home/{self.username}/.bash_history"
+        ok, content = self.vfs.cat(hist_path, user=self.username)
+        if ok and content.strip():
+            return [l for l in content.splitlines() if l.strip()]
+        return ["ls -la", "uptime", "cat /var/log/syslog"]
+
+    def _save_user_history(self):
+        try:
+            hist_path = "/root/.bash_history" if self.username == "root" else f"/home/{self.username}/.bash_history"
+            content = "\n".join(self.history[-200:]) + "\n"
+            self.vfs.write_file(hist_path, content, user=self.username)
+        except Exception:
+            pass
 
     def get_prompt(self) -> str:
         symbol = "#" if self.username == "root" else "$"
@@ -50,28 +81,135 @@ class TerminalSession:
             cwd = "~"
         return f"\033[01;32m{self.username}@{HOSTNAME}\033[00m:\033[01;34m{cwd}\033[00m{symbol} "
 
+    def _read_password(self, prompt: str) -> Optional[str]:
+        """Đọc mật khẩu không echo ký tự từ terminal chuẩn Ubuntu"""
+        self.channel.send(prompt)
+        pwd = ""
+        last_was_cr = False
+        while True:
+            data = self.channel.recv(1024)
+            if not data:
+                return None
+            for byte in data:
+                char = chr(byte)
+                if byte == 3:  # Ctrl+C
+                    self.channel.send("^C\r\n")
+                    return None
+                elif char in ('\r', '\n'):
+                    if char == '\n' and last_was_cr:
+                        last_was_cr = False
+                        continue
+                    last_was_cr = (char == '\r')
+                    self.channel.send("\r\n")
+                    return pwd
+                elif byte in (127, 8):  # Backspace
+                    last_was_cr = False
+                    if pwd:
+                        pwd = pwd[:-1]
+                elif 32 <= byte <= 126:
+                    last_was_cr = False
+                    pwd += char
+
+    def _authenticate_sudo(self) -> bool:
+        """Kiểm tra và xác thực quyền sudo theo đúng sudoers và auth cache"""
+        if self.username == "root":
+            return True
+
+        # Kiểm tra auth cache 5 phút
+        now = time.time()
+        if (now - self.sudo_auth_timestamp) < self.sudo_auth_timeout:
+            return True
+
+        # Kiểm tra sudoers (user phải thuộc nhóm sudo)
+        sudo_members = self.router.state.groups.get("sudo", {}).get("members", [])
+        if self.username not in sudo_members:
+            self.channel.send(f"{self.username} is not in the sudoers file.  This incident will be reported.\r\n")
+            # Ghi log auth
+            now_str = time.strftime("%b %d %H:%M:%S")
+            log_line = f"{now_str} {HOSTNAME} sudo: {self.username} : user NOT in sudoers ; TTY=pts/0 ; PWD={self.vfs.pwd()} ; USER=root\n"
+            self.vfs.write_file("/var/log/auth.log", log_line, append=True, user="root")
+            return False
+
+        # Thử nhập mật khẩu tối đa 3 lần
+        for attempt in range(3):
+            entered = self._read_password(f"[sudo] password for {self.username}: ")
+            if entered is None:
+                return False
+
+            if self.router.state.verify_password(self.username, entered):
+                self.sudo_auth_timestamp = time.time()
+                # Ghi log auth thành công
+                now_str = time.strftime("%b %d %H:%M:%S")
+                log_line = f"{now_str} {HOSTNAME} sudo: {self.username} : TTY=pts/0 ; PWD={self.vfs.pwd()} ; USER=root\n"
+                self.vfs.write_file("/var/log/auth.log", log_line, append=True, user="root")
+                return True
+            else:
+                if attempt < 2:
+                    self.channel.send("Sorry, try again.\r\n")
+                else:
+                    self.channel.send("sudo: 3 incorrect password attempts\r\n")
+                    now_str = time.strftime("%b %d %H:%M:%S")
+                    log_line = f"{now_str} {HOSTNAME} sudo: pam_unix(sudo:auth): authentication failure; logname={self.username} uid=1000 euid=0 tty=/dev/pts/0 ruser={self.username} rhost=\n"
+                    self.vfs.write_file("/var/log/auth.log", log_line, append=True, user="root")
+                    return False
+
+        return False
+
+    def _handle_su(self, command: str) -> bool:
+        """Xử lý lệnh su / su - / su <target_user>"""
+        tokens = command.split()
+        target_user = "root"
+        login_shell = False
+        
+        for t in tokens[1:]:
+            if t in ("-", "-l", "--login"):
+                login_shell = True
+            elif not t.startswith("-"):
+                target_user = t
+
+        if target_user not in self.router.state.users:
+            self.channel.send(f"su: user {target_user} does not exist or the user entry does not contain all the required fields\r\n")
+            return False
+
+        # Nếu đang là root chuyển sang user khác thì không cần mật khẩu
+        if self.username != "root":
+            entered = self._read_password("Password: ")
+            if entered is None:
+                return False
+            if not self.router.state.verify_password(target_user, entered):
+                self.channel.send("su: Authentication failure\r\n")
+                now_str = time.strftime("%b %d %H:%M:%S")
+                self.vfs.write_file("/var/log/auth.log", f"{now_str} {HOSTNAME} su[1420]: pam_unix(su:auth): authentication failure; logname={self.username} uid=1000 euid=0 tty=pts/0 ruser={self.username} rhost= user={target_user}\n", append=True, user="root")
+                return False
+
+        # Chuyển đổi người dùng thành công
+        self.user_stack.append((self.username, self.vfs.pwd()))
+        self.username = target_user
+        if login_shell:
+            new_home = "/root" if target_user == "root" else f"/home/{target_user}"
+            self.vfs.cwd = new_home
+
+        now_str = time.strftime("%b %d %H:%M:%S")
+        self.vfs.write_file("/var/log/auth.log", f"{now_str} {HOSTNAME} su[1420]: Successful su for {target_user} by {self.user_stack[-1][0]}\n", append=True, user="root")
+        return True
+
     def run(self):
-        """Xử lý phiên tương tác dòng lệnh với hacker: hỗ trợ đầy đủ GNU Readline,
-        di chuyển con trỏ Trái/Phải, Home/End, xóa giữa dòng, chèn chữ, Tab, Mũi tên Lên/Xuống, Backspace, Ctrl+C.
-        """
+        """Vòng lặp PTY tương tác chuẩn GNU Readline"""
         try:
             self.channel.send(WELCOME_BANNER)
             self.channel.send(self.get_prompt())
 
             cmd_buffer = ""
-            cursor_pos = 0  # Vị trí con trỏ trong cmd_buffer (0 đến len(cmd_buffer))
+            cursor_pos = 0
             last_was_cr = False
             escape_mode = False
             escape_buf = ""
 
             def redraw_line(new_buf: str):
                 nonlocal cmd_buffer, cursor_pos
-                # Di chuyển con trỏ về đầu dòng (ngay sau dấu prompt)
                 if cursor_pos > 0:
                     self.channel.send(f"\x1b[{cursor_pos}D")
-                # Xóa toàn bộ dòng từ vị trí con trỏ đến hết
                 self.channel.send("\x1b[K")
-                # In nội dung mới
                 self.channel.send(new_buf)
                 cmd_buffer = new_buf
                 cursor_pos = len(new_buf)
@@ -84,14 +222,13 @@ class TerminalSession:
                 for byte in data:
                     char = chr(byte)
 
-                    # 1. Xử lý Escape Sequence (Phím mũi tên, Home, End, Delete, v.v.)
+                    # 1. Escape Sequences
                     if escape_mode:
                         escape_buf += char
-                        # Các chuỗi ANSI CSI kết thúc bằng chữ cái hoặc dấu ~
                         if char in ('A', 'B', 'C', 'D', '~', 'F', 'H'):
                             escape_mode = False
                             
-                            # MŨI TÊN LÊN (UP ARROW) -> Xem lại lệnh trước trong lịch sử
+                            # UP ARROW
                             if escape_buf.endswith("[A") or escape_buf.endswith("OA"):
                                 if self.history and self.history_idx > 0:
                                     self.history_idx -= 1
@@ -99,7 +236,7 @@ class TerminalSession:
                                 else:
                                     self.channel.send("\x07")
 
-                            # MŨI TÊN XUỐNG (DOWN ARROW) -> Tiến tới lệnh sau trong lịch sử
+                            # DOWN ARROW
                             elif escape_buf.endswith("[B") or escape_buf.endswith("OB"):
                                 if self.history and self.history_idx < len(self.history) - 1:
                                     self.history_idx += 1
@@ -110,7 +247,7 @@ class TerminalSession:
                                 else:
                                     self.channel.send("\x07")
 
-                            # MŨI TÊN TRÁI (LEFT ARROW) -> Dịch con trỏ sang trái 1 ký tự
+                            # LEFT ARROW
                             elif escape_buf.endswith("[D") or escape_buf.endswith("OD"):
                                 if cursor_pos > 0:
                                     cursor_pos -= 1
@@ -118,7 +255,7 @@ class TerminalSession:
                                 else:
                                     self.channel.send("\x07")
 
-                            # MŨI TÊN PHẢI (RIGHT ARROW) -> Dịch con trỏ sang phải 1 ký tự
+                            # RIGHT ARROW
                             elif escape_buf.endswith("[C") or escape_buf.endswith("OC"):
                                 if cursor_pos < len(cmd_buffer):
                                     cursor_pos += 1
@@ -126,20 +263,20 @@ class TerminalSession:
                                 else:
                                     self.channel.send("\x07")
 
-                            # PHÍM HOME -> Về đầu dòng lệnh
+                            # HOME
                             elif escape_buf.endswith("[H") or escape_buf.endswith("OH") or escape_buf.endswith("[1~") or escape_buf.endswith("[7~"):
                                 if cursor_pos > 0:
                                     self.channel.send(f"\x1b[{cursor_pos}D")
                                     cursor_pos = 0
 
-                            # PHÍM END -> Về cuối dòng lệnh
+                            # END
                             elif escape_buf.endswith("[F") or escape_buf.endswith("OF") or escape_buf.endswith("[4~") or escape_buf.endswith("[8~"):
                                 if cursor_pos < len(cmd_buffer):
                                     diff = len(cmd_buffer) - cursor_pos
                                     self.channel.send(f"\x1b[{diff}C")
                                     cursor_pos = len(cmd_buffer)
 
-                            # PHÍM DELETE -> Xóa ký tự tại vị trí con trỏ
+                            # DELETE
                             elif escape_buf.endswith("[3~"):
                                 if cursor_pos < len(cmd_buffer):
                                     cmd_buffer = cmd_buffer[:cursor_pos] + cmd_buffer[cursor_pos + 1:]
@@ -153,7 +290,6 @@ class TerminalSession:
                             escape_buf = ""
                         continue
 
-                    # Bắt đầu chuỗi Escape (ESC = 27)
                     if byte == 27:
                         last_was_cr = False
                         escape_mode = True
@@ -174,14 +310,92 @@ class TerminalSession:
 
                         if command:
                             self.commands_count += 1
-                            # Lưu vào lịch sử lệnh
                             if not self.history or self.history[-1] != command:
                                 self.history.append(command)
                             self.history_idx = len(self.history)
 
-                            stdout, handler, latency = self.router.execute(command, user=self.username)
-                            
-                            # Ghi nhật ký sự kiện tương tác thông thường (không gán nhãn)
+                            # =================================================
+                            # A. NÂNG QUYỀN: SUDO SU / SUDO -I / SUDO -S
+                            # =================================================
+                            cmd_tokens = command.split()
+                            if cmd_tokens[0] == "sudo" and len(cmd_tokens) > 1 and cmd_tokens[1] in ("su", "-i", "-s"):
+                                if self._authenticate_sudo():
+                                    self.user_stack.append((self.username, self.vfs.pwd()))
+                                    self.username = "root"
+                                    if "-i" in cmd_tokens or "-" in cmd_tokens:
+                                        self.vfs.cwd = "/root"
+                                self.channel.send(self.get_prompt())
+                                continue
+
+                            # =================================================
+                            # B. CHUYỂN USER: SU / SU -
+                            # =================================================
+                            elif cmd_tokens[0] == "su":
+                                self._handle_su(command)
+                                self.channel.send(self.get_prompt())
+                                continue
+
+                            # =================================================
+                            # C. TRÌNH SOẠN THẢO NANO: nano <file> / sudo nano <file>
+                            # =================================================
+                            elif cmd_tokens[0] == "nano" or (cmd_tokens[0] == "sudo" and len(cmd_tokens) > 1 and cmd_tokens[1] == "nano"):
+                                is_sudo = (cmd_tokens[0] == "sudo")
+                                if is_sudo:
+                                    if not self._authenticate_sudo():
+                                        self.channel.send(self.get_prompt())
+                                        continue
+                                    target_file = cmd_tokens[2] if len(cmd_tokens) > 2 else "newfile.txt"
+                                    nano_user = "root"
+                                else:
+                                    target_file = cmd_tokens[1] if len(cmd_tokens) > 1 else "newfile.txt"
+                                    nano_user = self.username
+
+                                editor = NanoEditor(self.channel, self.vfs, target_file, user=nano_user)
+                                editor.run()
+
+                                self.logger.log_interaction(
+                                    session_id=self.session_id,
+                                    source_ip=self.client_ip,
+                                    source_port=self.client_port,
+                                    username=self.username,
+                                    command=command,
+                                    command_output="[NANO_INTERACTIVE_SESSION]",
+                                    handler_type="NANO",
+                                    latency_ms=10.0
+                                )
+
+                                self.channel.send(self.get_prompt())
+                                continue
+
+                            # =================================================
+                            # D. SUDO LỆNH THÔNG THƯỜNG (e.g. sudo cat /etc/shadow)
+                            # =================================================
+                            elif cmd_tokens[0] == "sudo":
+                                if not self._authenticate_sudo():
+                                    self.channel.send(self.get_prompt())
+                                    continue
+                                exec_user = "root"
+                            else:
+                                exec_user = self.username
+
+                            # =================================================
+                            # E. XỬ LÝ LỆNH EXIT / LOGOUT VỚI USER STACK
+                            # =================================================
+                            if command in ("exit", "logout"):
+                                if self.user_stack:
+                                    self.username, prev_cwd = self.user_stack.pop()
+                                    self.vfs.cwd = prev_cwd
+                                    self.channel.send("exit\r\n")
+                                    self.channel.send(self.get_prompt())
+                                    continue
+                                else:
+                                    self.normal_exit = True
+                                    self.channel.send("logout\r\n")
+                                    return
+
+                            stdout, handler, latency = self.router.execute(command, user=exec_user)
+
+                            # Ghi log
                             self.logger.log_interaction(
                                 session_id=self.session_id,
                                 source_ip=self.client_ip,
@@ -193,13 +407,19 @@ class TerminalSession:
                                 latency_ms=latency
                             )
 
-                            # Nếu hacker gõ exit/logout
                             if stdout == "__EXIT__":
-                                self.normal_exit = True
-                                self.channel.send("logout\r\n")
-                                return
+                                if self.user_stack:
+                                    self.username, prev_cwd = self.user_stack.pop()
+                                    self.vfs.cwd = prev_cwd
+                                    self.channel.send("exit\r\n")
+                                    self.channel.send(self.get_prompt())
+                                    continue
+                                else:
+                                    self.normal_exit = True
+                                    self.channel.send("logout\r\n")
+                                    return
 
-                            # Gửi phản hồi stdout về terminal
+                            # Gửi stdout về terminal
                             formatted_stdout = stdout.replace("\r\n", "\n").replace("\n", "\r\n")
                             if formatted_stdout and not formatted_stdout.endswith("\r\n"):
                                 formatted_stdout += "\r\n"
@@ -207,13 +427,13 @@ class TerminalSession:
 
                         self.channel.send(self.get_prompt())
 
-                    # 3. Tab Autocompletion (phím Tab = byte 9)
+                    # 3. Tab Autocompletion
                     elif byte == 9:
                         last_was_cr = False
                         cmd_buffer = self.handle_tab_completion(cmd_buffer)
                         cursor_pos = len(cmd_buffer)
 
-                    # 4. Backspace (byte 127 hoặc byte 8)
+                    # 4. Backspace
                     elif byte in (127, 8):
                         last_was_cr = False
                         if cursor_pos > 0:
@@ -227,7 +447,7 @@ class TerminalSession:
                         else:
                             self.channel.send("\x07")
 
-                    # 5. Ctrl+C (Hủy dòng lệnh hiện tại)
+                    # 5. Ctrl+C
                     elif byte == 3:
                         last_was_cr = False
                         cmd_buffer = ""
@@ -236,13 +456,20 @@ class TerminalSession:
                         self.channel.send("^C\r\n")
                         self.channel.send(self.get_prompt())
 
-                    # 6. Ctrl+D (Thoát nếu dòng trống)
+                    # 6. Ctrl+D (Thoát)
                     elif byte == 4:
                         last_was_cr = False
                         if not cmd_buffer:
-                            self.normal_exit = True
-                            self.channel.send("exit\r\n")
-                            return
+                            if self.user_stack:
+                                self.username, prev_cwd = self.user_stack.pop()
+                                self.vfs.cwd = prev_cwd
+                                self.channel.send("exit\r\n")
+                                self.channel.send(self.get_prompt())
+                                continue
+                            else:
+                                self.normal_exit = True
+                                self.channel.send("exit\r\n")
+                                return
 
                     # 7. Ctrl+A (Home)
                     elif byte == 1:
@@ -259,7 +486,7 @@ class TerminalSession:
                             self.channel.send(f"\x1b[{diff}C")
                             cursor_pos = len(cmd_buffer)
 
-                    # 9. Ctrl+U (Xóa từ con trỏ về đầu dòng)
+                    # 9. Ctrl+U (Clear before cursor)
                     elif byte == 21:
                         last_was_cr = False
                         if cursor_pos > 0:
@@ -269,7 +496,7 @@ class TerminalSession:
                                 self.channel.send(f"\x1b[{len(cmd_buffer)}D")
                             cursor_pos = 0
 
-                    # 10. Ctrl+K (Xóa từ con trỏ đến cuối dòng)
+                    # 10. Ctrl+K (Clear after cursor)
                     elif byte == 11:
                         last_was_cr = False
                         cmd_buffer = cmd_buffer[:cursor_pos]
@@ -283,7 +510,7 @@ class TerminalSession:
                         if cursor_pos < len(cmd_buffer):
                             self.channel.send(f"\x1b[{len(cmd_buffer) - cursor_pos}D")
 
-                    # 12. Ký tự in được thông thường
+                    # 12. Printable characters
                     elif 32 <= byte <= 126:
                         last_was_cr = False
                         if cursor_pos == len(cmd_buffer):
@@ -291,7 +518,6 @@ class TerminalSession:
                             cursor_pos += 1
                             self.channel.send(char)
                         else:
-                            # Chèn ký tự vào giữa dòng
                             cmd_buffer = cmd_buffer[:cursor_pos] + char + cmd_buffer[cursor_pos:]
                             cursor_pos += 1
                             remainder = cmd_buffer[cursor_pos:]
@@ -302,6 +528,7 @@ class TerminalSession:
         except Exception:
             pass
         finally:
+            self._save_user_history()
             try:
                 duration = time.time() - self.start_time
                 reason = "normal" if self.normal_exit else "abrupt_disconnect"
@@ -373,7 +600,6 @@ class TerminalSession:
         children = node.get("children", {})
         matches = [name for name in sorted(children.keys()) if name.startswith(file_prefix)]
         
-        # Ẩn file ẩn nếu không gõ bắt đầu bằng dấu chấm
         if not file_prefix.startswith("."):
             matches = [m for m in matches if not m.startswith(".")]
 

@@ -1,0 +1,830 @@
+{
+  "hostname": "ubuntu-srv-01",
+  "users": {
+    "root": {
+      "uid": 0,
+      "gid": 0,
+      "home": "/root",
+      "shell": "/bin/bash",
+      "password": "123"
+    },
+    "ubuntu": {
+      "uid": 1000,
+      "gid": 1000,
+      "home": "/home/ubuntu",
+      "shell": "/bin/bash",
+      "password": "123"
+    },
+    "daemon": {
+      "uid": 1,
+      "gid": 1,
+      "home": "/usr/sbin",
+      "shell": "/usr/sbin/nologin",
+      "password": "*"
+    },
+    "bin": {
+      "uid": 2,
+      "gid": 2,
+      "home": "/bin",
+      "shell": "/usr/sbin/nologin",
+      "password": "*"
+    },
+    "sys": {
+      "uid": 3,
+      "gid": 3,
+      "home": "/dev",
+      "shell": "/usr/sbin/nologin",
+      "password": "*"
+    },
+    "sync": {
+      "uid": 4,
+      "gid": 65534,
+      "home": "/bin",
+      "shell": "/bin/sync",
+      "password": "*"
+    },
+    "www-data": {
+      "uid": 33,
+      "gid": 33,
+      "home": "/var/www",
+      "shell": "/usr/sbin/nologin",
+      "password": "*"
+    },
+    "backup": {
+      "uid": 34,
+      "gid": 34,
+      "home": "/var/backups",
+      "shell": "/usr/sbin/nologin",
+      "password": "*"
+    },
+    "sshd": {
+      "uid": 103,
+      "gid": 65534,
+      "home": "/run/sshd",
+      "shell": "/usr/sbin/nologin",
+      "password": "*"
+    },
+    "mysql": {
+      "uid": 104,
+      "gid": 110,
+      "home": "/nonexistent",
+      "shell": "/bin/false",
+      "password": "*"
+    }
+  },
+  "groups": {
+    "root": {
+      "gid": 0,
+      "members": [
+        "root"
+      ]
+    },
+    "daemon": {
+      "gid": 1,
+      "members": [
+        "daemon"
+      ]
+    },
+    "bin": {
+      "gid": 2,
+      "members": [
+        "bin"
+      ]
+    },
+    "sys": {
+      "gid": 3,
+      "members": [
+        "sys"
+      ]
+    },
+    "adm": {
+      "gid": 4,
+      "members": [
+        "ubuntu",
+        "syslog"
+      ]
+    },
+    "sudo": {
+      "gid": 27,
+      "members": [
+        "ubuntu"
+      ]
+    },
+    "www-data": {
+      "gid": 33,
+      "members": [
+        "www-data"
+      ]
+    },
+    "shadow": {
+      "gid": 42,
+      "members": []
+    },
+    "mysql": {
+      "gid": 110,
+      "members": [
+        "mysql"
+      ]
+    },
+    "docker": {
+      "gid": 999,
+      "members": [
+        "ubuntu"
+      ]
+    },
+    "ubuntu": {
+      "gid": 1000,
+      "members": [
+        "ubuntu"
+      ]
+    }
+  },
+  "services": {
+    "ssh": {
+      "name": "ssh",
+      "desc": "OpenBSD Secure Shell server",
+      "active": "active",
+      "sub": "running",
+      "pid": 640
+    },
+    "sshd": {
+      "name": "sshd",
+      "desc": "OpenBSD Secure Shell server",
+      "active": "active",
+      "sub": "running",
+      "pid": 640
+    },
+    "cron": {
+      "name": "cron",
+      "desc": "Regular background program processing daemon",
+      "active": "active",
+      "sub": "running",
+      "pid": 520
+    },
+    "rsyslog": {
+      "name": "rsyslog",
+      "desc": "System Logging Service",
+      "active": "active",
+      "sub": "running",
+      "pid": 410
+    },
+    "systemd-resolved": {
+      "name": "systemd-resolved",
+      "desc": "Network Name Resolution",
+      "active": "active",
+      "sub": "running",
+      "pid": 350
+    },
+    "systemd-journald": {
+      "name": "systemd-journald",
+      "desc": "Journal Service",
+      "active": "active",
+      "sub": "running",
+      "pid": 80
+    },
+    "nginx": {
+      "name": "nginx",
+      "desc": "A high performance web server and a reverse proxy server",
+      "active": "active",
+      "sub": "running",
+      "pid": 820
+    },
+    "mysql": {
+      "name": "mysql",
+      "desc": "MySQL Community Server",
+      "active": "active",
+      "sub": "running",
+      "pid": 750
+    }
+  },
+  "packages": {
+    "coreutils": {
+      "version": "8.32-4.1ubuntu1.2",
+      "status": "installed",
+      "desc": "GNU core utilities",
+      "installed_size": 17850
+    },
+    "bash": {
+      "version": "5.1-6ubuntu1.1",
+      "status": "installed",
+      "desc": "GNU Bourne Again SHell",
+      "installed_size": 6500
+    },
+    "openssh-server": {
+      "version": "1:8.9p1-3ubuntu0.6",
+      "status": "installed",
+      "desc": "secure shell (SSH) server",
+      "installed_size": 1420
+    },
+    "openssh-client": {
+      "version": "1:8.9p1-3ubuntu0.6",
+      "status": "installed",
+      "desc": "secure shell (SSH) client",
+      "installed_size": 4100
+    },
+    "nano": {
+      "version": "6.2-1",
+      "status": "installed",
+      "desc": "small, friendly text editor inspired by Pico",
+      "installed_size": 840
+    },
+    "curl": {
+      "version": "7.81.0-1ubuntu1.15",
+      "status": "installed",
+      "desc": "command line tool for transferring data with URL syntax",
+      "installed_size": 450
+    },
+    "wget": {
+      "version": "1.21.2-2ubuntu1.1",
+      "status": "installed",
+      "desc": "retrieves files from the web",
+      "installed_size": 980
+    },
+    "tar": {
+      "version": "1.34+dfsg-1ubuntu0.1.22.04.1",
+      "status": "installed",
+      "desc": "GNU version of the tar archiving utility",
+      "installed_size": 820
+    },
+    "gzip": {
+      "version": "1.10-4ubuntu4.1",
+      "status": "installed",
+      "desc": "GNU compression utilities",
+      "installed_size": 240
+    },
+    "net-tools": {
+      "version": "1.60+git20181103.0eebece-1ubuntu5",
+      "status": "installed",
+      "desc": "NET-3 networking toolkit",
+      "installed_size": 850
+    },
+    "iproute2": {
+      "version": "5.15.0-1ubuntu2",
+      "status": "installed",
+      "desc": "networking and traffic control tools",
+      "installed_size": 3200
+    },
+    "systemd": {
+      "version": "249.11-0ubuntu3.12",
+      "status": "installed",
+      "desc": "system and service manager",
+      "installed_size": 14200
+    },
+    "sudo": {
+      "version": "1.9.9-1ubuntu2.4",
+      "status": "installed",
+      "desc": "Provide limited super user privileges to specific users",
+      "installed_size": 2100
+    },
+    "apt": {
+      "version": "2.4.11",
+      "status": "installed",
+      "desc": "commandline package manager",
+      "installed_size": 4300
+    },
+    "dpkg": {
+      "version": "1.21.1ubuntu2.2",
+      "status": "installed",
+      "desc": "Debian package management system",
+      "installed_size": 7100
+    },
+    "python3": {
+      "version": "3.10.12-1~22.04.3",
+      "status": "installed",
+      "desc": "interactive high-level object-oriented language (default python3 version)",
+      "installed_size": 65
+    },
+    "nginx": {
+      "version": "1.18.0-6ubuntu14.4",
+      "status": "installed",
+      "desc": "small, powerful, scalable web/proxy server",
+      "installed_size": 2700
+    },
+    "mysql-server": {
+      "version": "8.0.36-0ubuntu0.22.04.1",
+      "status": "installed",
+      "desc": "MySQL database server binaries and system database setup",
+      "installed_size": 29000
+    },
+    "htop": {
+      "version": "3.0.5-7build2",
+      "status": "installed",
+      "desc": "interactive processes viewer",
+      "installed_size": 555
+    }
+  },
+  "apt_updated_time": null,
+  "fs": {
+    "/": {
+      "type": "dir",
+      "owner": "root",
+      "group": "root",
+      "perm": "755",
+      "mtime": "Oct 30 12:00",
+      "children": {
+        "bin": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "sbin": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "boot": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "dev": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "lib": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "media": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "mnt": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "opt": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "srv": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "sys": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "555",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "run": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "tmp": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "777",
+          "mtime": "Oct 30 12:00",
+          "children": {}
+        },
+        "etc": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {
+            "hostname": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "ubuntu-srv-01\n"
+            },
+            "issue": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "Ubuntu 22.04.4 LTS \\n \\l\n"
+            },
+            "os-release": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "PRETTY_NAME=\"Ubuntu 22.04.4 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"22.04\"\nVERSION=\"22.04.4 LTS (Jammy Jellyfish)\"\nVERSION_CODENAME=jammy\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\n"
+            },
+            "hosts": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "127.0.0.1 localhost\n127.0.1.1 ubuntu-srv-01\n\n::1 ip6-localhost ip6-loopback\nfe00::0 ip6-localnet\nff02::1 ip6-allnodes\nff02::2 ip6-allrouters\n192.168.101.50 db-cluster.internal\n192.168.101.80 gitlab.internal\n"
+            },
+            "fstab": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "# /etc/fstab: static file system information.\n/dev/sda1 / ext4 errors=remount-ro 0 1\n/dev/sda2 none swap sw 0 0\n"
+            },
+            "resolv.conf": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "# Generated by systemd-resolved\nnameserver 127.0.0.53\noptions edns0 trust-ad\nsearch localdomain\n"
+            },
+            "crontab": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "SHELL=/bin/sh\nPATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin\n\n17 * * * * root cd / && run-parts --report /etc/cron.hourly\n25 6 * * * root test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.daily )\n*/15 * * * * root /root/deploy.sh > /dev/null 2>&1\n"
+            },
+            "sudoers": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "440",
+              "mtime": "Oct 30 12:00",
+              "content": "Defaults\tenv_reset\nDefaults\tmail_badpass\nDefaults\tsecure_path=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"\n\n# User privilege specification\nroot\tALL=(ALL:ALL) ALL\n\n# Members of the admin group may gain root privileges\n%admin ALL=(ALL) ALL\n\n# Allow members of group sudo to execute any command\n%sudo\tALL=(ALL:ALL) ALL\n"
+            },
+            "passwd": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "root:x:0:0:Root:/root:/bin/bash\nubuntu:x:1000:1000:Ubuntu:/home/ubuntu:/bin/bash\ndaemon:x:1:1:Daemon:/usr/sbin:/usr/sbin/nologin\nbin:x:2:2:Bin:/bin:/usr/sbin/nologin\nsys:x:3:3:Sys:/dev:/usr/sbin/nologin\nsync:x:4:65534:Sync:/bin:/bin/sync\nwww-data:x:33:33:Www-data:/var/www:/usr/sbin/nologin\nbackup:x:34:34:Backup:/var/backups:/usr/sbin/nologin\nsshd:x:103:65534:Sshd:/run/sshd:/usr/sbin/nologin\nmysql:x:104:110:Mysql:/nonexistent:/bin/false\n"
+            },
+            "shadow": {
+              "type": "file",
+              "owner": "root",
+              "group": "shadow",
+              "perm": "640",
+              "mtime": "Oct 30 12:00",
+              "content": "root:$6$salt$a665a45920422f9d417e4867:19600:0:99999:7:::\nubuntu:$6$salt$a665a45920422f9d417e4867:19600:0:99999:7:::\ndaemon:*:19600:0:99999:7:::\nbin:*:19600:0:99999:7:::\nsys:*:19600:0:99999:7:::\nsync:*:19600:0:99999:7:::\nwww-data:*:19600:0:99999:7:::\nbackup:*:19600:0:99999:7:::\nsshd:*:19600:0:99999:7:::\nmysql:*:19600:0:99999:7:::\n"
+            },
+            "group": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "root:x:0:root\ndaemon:x:1:daemon\nbin:x:2:bin\nsys:x:3:sys\nadm:x:4:ubuntu,syslog\nsudo:x:27:ubuntu\nwww-data:x:33:www-data\nshadow:x:42:\nmysql:x:110:mysql\ndocker:x:999:ubuntu\nubuntu:x:1000:ubuntu\n"
+            },
+            "ssh": {
+              "type": "dir",
+              "owner": "root",
+              "group": "root",
+              "perm": "755",
+              "mtime": "Oct 30 12:00",
+              "children": {
+                "sshd_config": {
+                  "type": "file",
+                  "owner": "root",
+                  "group": "root",
+                  "perm": "644",
+                  "mtime": "Oct 30 12:00",
+                  "content": "Port 22\nPermitRootLogin prohibit-password\nPasswordAuthentication yes\nX11Forwarding no\nSubsystem sftp /usr/lib/openssh/sftp-server\n"
+                }
+              }
+            },
+            "apt": {
+              "type": "dir",
+              "owner": "root",
+              "group": "root",
+              "perm": "755",
+              "mtime": "Oct 30 12:00",
+              "children": {
+                "sources.list": {
+                  "type": "file",
+                  "owner": "root",
+                  "group": "root",
+                  "perm": "644",
+                  "mtime": "Oct 30 12:00",
+                  "content": "deb http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse\ndeb http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse\ndeb http://security.ubuntu.com/ubuntu jammy-security main restricted universe multiverse\n"
+                }
+              }
+            }
+          }
+        },
+        "home": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {
+            "ubuntu": {
+              "type": "dir",
+              "owner": "ubuntu",
+              "group": "ubuntu",
+              "perm": "755",
+              "mtime": "Oct 30 12:00",
+              "children": {
+                ".bashrc": {
+                  "type": "file",
+                  "owner": "ubuntu",
+                  "group": "ubuntu",
+                  "perm": "644",
+                  "mtime": "Oct 30 12:00",
+                  "content": "# ~/.bashrc\nexport PATH=$PATH:/usr/local/bin\n"
+                },
+                ".profile": {
+                  "type": "file",
+                  "owner": "ubuntu",
+                  "group": "ubuntu",
+                  "perm": "644",
+                  "mtime": "Oct 30 12:00",
+                  "content": "# ~/.profile\nif [ -n \"$BASH_VERSION\" ]; then\n  [ -f \"$HOME/.bashrc\" ] && . \"$HOME/.bashrc\"\nfi\n"
+                },
+                ".bash_history": {
+                  "type": "file",
+                  "owner": "ubuntu",
+                  "group": "ubuntu",
+                  "perm": "600",
+                  "mtime": "Nov 06 20:30",
+                  "content": "sudo apt update\nsudo systemctl status nginx\nls -la\ncat notes.txt\nwhoami\nsudo su\nwhoami\ncat /etc/shadow | grep root\nexit\nwhoami\nexit\n"
+                },
+                "notes.txt": {
+                  "type": "file",
+                  "owner": "ubuntu",
+                  "group": "ubuntu",
+                  "perm": "644",
+                  "mtime": "Oct 30 12:00",
+                  "content": "Deployment Notes:\n1. Database host: 192.168.101.50\n2. App backup script in /tmp\n3. Sudo password is configured for ubuntu user\n"
+                }
+              }
+            }
+          }
+        },
+        "root": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "700",
+          "mtime": "Oct 30 12:00",
+          "children": {
+            ".bashrc": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "# ~/.bashrc for root\nexport PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n"
+            },
+            ".profile": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "# ~/.profile for root\n"
+            },
+            ".bash_history": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "600",
+              "mtime": "Oct 30 12:00",
+              "content": "apt update && apt upgrade -y\nsudo systemctl restart sshd\ncat /var/log/syslog\n"
+            },
+            "notes.txt": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "644",
+              "mtime": "Oct 30 12:00",
+              "content": "CONFIDENTIAL INFRASTRUCTURE CREDENTIALS:\nDB Master: 192.168.101.50\nUser: root_cluster\nPass: EnterpriseP@ss2026!\n"
+            },
+            "deploy.sh": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "755",
+              "mtime": "Oct 30 12:00",
+              "content": "#!/bin/bash\necho 'Starting server deployment...'\nsystemctl restart nginx\nsystemctl restart mysql\n"
+            }
+          }
+        },
+        "proc": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "555",
+          "mtime": "Oct 30 12:00",
+          "children": {
+            "cpuinfo": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "444",
+              "mtime": "Oct 30 12:00",
+              "content": "processor\t: 0\nvendor_id\t: GenuineIntel\nmodel name\t: Intel(R) Xeon(R) CPU E5-2676 v3 @ 2.40GHz\ncpu MHz\t\t: 2399.998\ncache size\t: 30720 KB\ncpu cores\t: 2\n\nprocessor\t: 1\nvendor_id\t: GenuineIntel\nmodel name\t: Intel(R) Xeon(R) CPU E5-2676 v3 @ 2.40GHz\ncpu MHz\t\t: 2399.998\ncache size\t: 30720 KB\ncpu cores\t: 2\n"
+            },
+            "meminfo": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "444",
+              "mtime": "Oct 30 12:00",
+              "content": "MemTotal:        4016140 kB\nMemFree:         2140512 kB\nMemAvailable:    2856230 kB\nBuffers:          142100 kB\nCached:           912400 kB\nSwapTotal:       2097148 kB\nSwapFree:        2097148 kB\n"
+            },
+            "version": {
+              "type": "file",
+              "owner": "root",
+              "group": "root",
+              "perm": "444",
+              "mtime": "Oct 30 12:00",
+              "content": "Linux version 5.15.0-88-generic (buildd@lcy02-amd64-001) (gcc version 11.4.0) #98-Ubuntu SMP Mon Oct 2 15:18:56 UTC 2023\n"
+            }
+          }
+        },
+        "var": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {
+            "log": {
+              "type": "dir",
+              "owner": "root",
+              "group": "root",
+              "perm": "755",
+              "mtime": "Oct 30 12:00",
+              "children": {
+                "syslog": {
+                  "type": "file",
+                  "owner": "syslog",
+                  "group": "adm",
+                  "perm": "640",
+                  "mtime": "Oct 30 12:00",
+                  "content": "Oct 30 12:00:01 ubuntu-srv-01 CRON[1042]: (root) CMD (/root/deploy.sh > /dev/null 2>&1)\nOct 30 12:05:14 ubuntu-srv-01 sshd[1200]: Accepted password for root from 192.168.1.1 port 54210 ssh2\nOct 30 12:05:14 ubuntu-srv-01 systemd-logind[420]: New session 3 of user root.\n"
+                },
+                "auth.log": {
+                  "type": "file",
+                  "owner": "syslog",
+                  "group": "adm",
+                  "perm": "640",
+                  "mtime": "Nov 06 20:30",
+                  "content": "Oct 30 12:05:14 ubuntu-srv-01 sshd[1200]: Accepted password for ubuntu from 192.168.1.1 port 54210 ssh2\nOct 30 12:05:14 ubuntu-srv-01 systemd-logind[420]: New session 3 of user ubuntu.\nNov 06 20:30:32 ubuntu-srv-01 sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root\n"
+                },
+                "dpkg.log": {
+                  "type": "file",
+                  "owner": "root",
+                  "group": "root",
+                  "perm": "644",
+                  "mtime": "Nov 06 20:30",
+                  "content": "2023-10-30 11:58:10 startup archives unpack\n2023-10-30 11:58:12 status installed nginx:all 1.18.0-6ubuntu14.4\n2026-11-06 20:30:35 install htop:amd64 <none> 3.0.5-7build2\n2026-11-06 20:30:35 status half-installed htop:amd64 3.0.5-7build2\n2026-11-06 20:30:35 status unpacked htop:amd64 3.0.5-7build2\n2026-11-06 20:30:35 status installed htop:amd64 3.0.5-7build2\n"
+                },
+                "apt": {
+                  "type": "dir",
+                  "owner": "root",
+                  "group": "root",
+                  "perm": "755",
+                  "mtime": "Oct 30 12:00",
+                  "children": {
+                    "history.log": {
+                      "type": "file",
+                      "owner": "root",
+                      "group": "root",
+                      "perm": "644",
+                      "mtime": "Nov 06 20:30",
+                      "content": "Start-Date: 2023-10-30  11:58:00\nCommandline: apt install nginx -y\nInstall: nginx:amd64 (1.18.0-6ubuntu14.4)\nEnd-Date: 2023-10-30  11:58:15\n\nStart-Date: 2026-11-06 20:30:35\nCommandline: apt install -y htop\nRequested-By: root (0)\nInstall: htop:amd64 (3.0.5-7build2)\nEnd-Date: 2026-11-06 20:30:35\n"
+                    },
+                    "term.log": {
+                      "type": "file",
+                      "owner": "root",
+                      "group": "root",
+                      "perm": "644",
+                      "mtime": "Oct 30 12:00",
+                      "content": "Log started: 2023-10-30 11:58:00\nUnpacking nginx (1.18.0-6ubuntu14.4) ...\nSetting up nginx (1.18.0-6ubuntu14.4) ...\n"
+                    }
+                  }
+                }
+              }
+            },
+            "www": {
+              "type": "dir",
+              "owner": "www-data",
+              "group": "www-data",
+              "perm": "755",
+              "mtime": "Oct 30 12:00",
+              "children": {
+                "html": {
+                  "type": "dir",
+                  "owner": "www-data",
+                  "group": "www-data",
+                  "perm": "755",
+                  "mtime": "Oct 30 12:00",
+                  "children": {
+                    "index.html": {
+                      "type": "file",
+                      "owner": "www-data",
+                      "group": "www-data",
+                      "perm": "644",
+                      "mtime": "Oct 30 12:00",
+                      "content": "<h1>Welcome to Enterprise Web Portal</h1>\n"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "usr": {
+          "type": "dir",
+          "owner": "root",
+          "group": "root",
+          "perm": "755",
+          "mtime": "Oct 30 12:00",
+          "children": {
+            "bin": {
+              "type": "dir",
+              "owner": "root",
+              "group": "root",
+              "perm": "755",
+              "mtime": "Oct 30 12:00",
+              "children": {
+                "htop": {
+                  "type": "file",
+                  "owner": "root",
+                  "group": "root",
+                  "perm": "755",
+                  "mtime": "Nov 06 20:30",
+                  "content": "#!/bin/bash\n# Simulated binary for htop\necho 'htop 3.0.5-7build2'\n"
+                }
+              }
+            },
+            "sbin": {
+              "type": "dir",
+              "owner": "root",
+              "group": "root",
+              "perm": "755",
+              "mtime": "Oct 30 12:00",
+              "children": {}
+            },
+            "lib": {
+              "type": "dir",
+              "owner": "root",
+              "group": "root",
+              "perm": "755",
+              "mtime": "Oct 30 12:00",
+              "children": {}
+            },
+            "share": {
+              "type": "dir",
+              "owner": "root",
+              "group": "root",
+              "perm": "755",
+              "mtime": "Oct 30 12:00",
+              "children": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}
