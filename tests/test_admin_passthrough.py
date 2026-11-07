@@ -17,7 +17,7 @@ class TestAdminPassthrough(unittest.TestCase):
 
     def test_admin_password_auth_success(self):
         """Admin đăng nhập bằng mật khẩu đặc quyền -> is_admin = True"""
-        res = self.interface.check_auth_password("nhuthang", "ThangAdminSecret2026!")
+        res = self.interface.check_auth_password("nhuthang", "123")
         self.assertEqual(res, paramiko.AUTH_SUCCESSFUL)
         self.assertTrue(self.interface.is_admin)
 

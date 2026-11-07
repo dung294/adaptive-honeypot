@@ -41,13 +41,13 @@ ENABLE_ADMIN_PASSTHROUGH = os.getenv("ENABLE_ADMIN_PASSTHROUGH", "true").lower()
 REAL_SSH_HOST = os.getenv("REAL_SSH_HOST", "127.0.0.1")
 REAL_SSH_PORT = int(os.getenv("REAL_SSH_PORT", "22022"))
 REAL_SSH_USER = os.getenv("REAL_SSH_USER", "nhuthang")
-REAL_SSH_PASSWORD = os.getenv("REAL_SSH_PASSWORD", "ThangAdminSecret2026!")
+REAL_SSH_PASSWORD = os.getenv("REAL_SSH_PASSWORD", "123")
 REAL_SSH_KEY_PATH = os.getenv("REAL_SSH_KEY_PATH", "")
 
 # Nhận diện Admin: Khóa Public Key và Mật khẩu đặc quyền
 ADMIN_AUTHORIZED_KEYS_FILE = BASE_DIR / "gateway" / "admin_authorized_keys"
 ADMIN_ALLOWED_USERS = [u.strip() for u in os.getenv("ADMIN_ALLOWED_USERS", "nhuthang,admin_master").split(",") if u.strip()]
-ADMIN_ALLOWED_PASSWORDS = [p.strip() for p in os.getenv("ADMIN_ALLOWED_PASSWORDS", "ThangAdminSecret2026!").split(",") if p.strip()]
+ADMIN_ALLOWED_PASSWORDS = [p.strip() for p in os.getenv("ADMIN_ALLOWED_PASSWORDS", "123").split(",") if p.strip()]
 
 # Cấu hình Xác thực Bẫy Honeypot
 # Chỉ các mật khẩu nằm trong danh sách này mới được mở cửa vào môi trường bẫy ảo
