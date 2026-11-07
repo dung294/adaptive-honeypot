@@ -1,6 +1,7 @@
 import json
 import uuid
 import datetime
+import urllib.parse
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from config import EVENT_LOG_FILE, LOGS_DIR
@@ -171,6 +172,42 @@ class HoneypotLogger:
                 pass
 
         return event_record
+
+    def log_auth_attempt(self, source_ip: str, source_port: int, username: str, password: str) -> Dict[str, Any]:
+        """Ghi nhận nỗ lực dò quét mật khẩu (Credential Harvesting / Brute-force)."""
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        event_key = f"{now}:{source_ip}:{source_port}:Auth"
+        
+        # URL-encoding an toàn theo phương pháp của Uphill Security
+        safe_user = urllib.parse.quote(username, safe="")
+        safe_pass = urllib.parse.quote(password, safe="")
+
+        record = {
+            "event_key": event_key,
+            "timestamp": now,
+            "source_ip": source_ip,
+            "source_port": source_port,
+            "protocol": "SSH",
+            "event_status": "Auth_Attempt",
+            "message": "SSH Authentication Attempt",
+            "username": username,
+            "password": password,
+            "encoded_username": safe_user,
+            "encoded_password": safe_pass,
+            "handler_type": "PRE_AUTH_TRAP",
+            "mitre_techniques": [
+                {
+                    "technique_id": "T1110.001",
+                    "technique_name": "Password Guessing",
+                    "tactic": "Credential Access"
+                }
+            ],
+            "ingested_at": now
+        }
+
+        with open(self.log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        return record
 
     def log_interaction(
         self,
