@@ -34,7 +34,7 @@ LOCAL_LOGS_DIR.mkdir(parents=True, exist_ok=True)
 DATASET_5K_FILE = BASE_DIR / "data" / "raw" / "run-2026-11-06-train-5000" / "events.jsonl"
 
 VM_HOST = "192.168.101.250"
-VM_PORT = 2222
+VM_PORT = 22
 VM_USER = "nhuthang"
 VM_PASS = "123"
 REMOTE_LOG_FILE = "/home/nhuthang/adaptive-honeypot/logs/events.jsonl"
@@ -429,7 +429,7 @@ DASHBOARD_HTML_TEMPLATE = """
           </h1>
           <p class="text-xs text-slate-400 flex items-center gap-2">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Hệ thống Bẫy Cổng 22 / 2222 Trực tuyến (Mục tiêu: 192.168.101.250) | Chuẩn Machine Learning JSON Lines
+            Hệ thống Bẫy Cổng 22 Trực tuyến (Mục tiêu: 192.168.101.250:22) | Chuẩn Machine Learning JSON Lines
           </p>
         </div>
       </div>
@@ -507,7 +507,7 @@ DASHBOARD_HTML_TEMPLATE = """
           <span class="text-slate-400 font-mono text-[11px]">Mục tiêu:</span>
           <input id="targetHost" type="text" value="192.168.101.250" class="bg-transparent text-cyan-300 font-mono w-28 outline-none border-b border-transparent focus:border-cyan-400">
           <span class="text-slate-600">:</span>
-          <input id="targetPort" type="text" value="2222" class="bg-transparent text-cyan-300 font-mono w-12 outline-none border-b border-transparent focus:border-cyan-400">
+          <input id="targetPort" type="text" value="22" class="bg-transparent text-cyan-300 font-mono w-12 outline-none border-b border-transparent focus:border-cyan-400">
         </div>
 
         <!-- SCENARIO SELECTOR -->

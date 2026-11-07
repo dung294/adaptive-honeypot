@@ -16,7 +16,7 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 TARGET_HOST = "192.168.101.250"
-TARGET_PORT = 2222
+TARGET_PORT = 22
 
 ALL_SCENARIOS = [
     {
