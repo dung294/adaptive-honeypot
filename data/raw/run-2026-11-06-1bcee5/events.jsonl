@@ -1,1 +1,0 @@
-{"event_id": "evt-run-2026-11-06-1bcee5-00001", "timestamp": "2026-11-06T16:16:47.933Z", "session_id": "47b392b7-2b6a-4f5c-8235-98d5fdd76118", "protocol": "ssh", "event_status": "login", "source_ip": "192.168.1.100", "source_port": 54321, "username": "ubuntu", "run_id": "run-2026-11-06-1bcee5", "raw_event": "SSH auth accepted for user 'ubuntu' from 192.168.1.100:54321"}
