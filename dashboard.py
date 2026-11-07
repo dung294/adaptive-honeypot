@@ -2,8 +2,9 @@
 """
 Adaptive Honeypot - Realtime Security Operations Center (SOC) Dashboard & Live Demo Tool.
 - Giao diện trực quan thời gian thực theo dõi toàn bộ hoạt động của Honeypot.
-- Tự động đồng bộ log từ máy ảo VMware (192.168.101.218:22) về Dashboard.
-- Tích hợp công cụ phát động kịch bản tấn công trực tiếp (Live Attack Trigger) để demo.
+- Hỗ trợ chọn mục tiêu tấn công linh hoạt (mặc định 192.168.101.250:2222).
+- Tích hợp công cụ phát động kịch bản tấn công trực tiếp: Hỗ trợ chạy đơn lẻ hoặc TẤT CẢ 6 KỊCH BẢN LIÊN HOÀN.
+- Tự động đồng bộ log từ máy ảo VMware về Dashboard.
 - Phân tích và ánh xạ MITRE ATT&CK, đánh giá mức độ cảnh báo (HIGH, MEDIUM, LOW) theo chuẩn Machine Learning.
 """
 
@@ -32,8 +33,8 @@ LOCAL_LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 DATASET_5K_FILE = BASE_DIR / "data" / "raw" / "run-2026-11-06-train-5000" / "events.jsonl"
 
-VM_HOST = "192.168.101.218"
-VM_PORT = 22022
+VM_HOST = "192.168.101.250"
+VM_PORT = 2222
 VM_USER = "nhuthang"
 VM_PASS = "123"
 REMOTE_LOG_FILE = "/home/nhuthang/adaptive-honeypot/logs/events.jsonl"
@@ -171,7 +172,8 @@ def vm_log_sync_worker():
         try:
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(VM_HOST, port=VM_PORT, username=VM_USER, password=VM_PASS, timeout=5, look_for_keys=False, allow_agent=False)
+            # Thử kết nối SSH tới máy chủ quản lý để lấy log
+            client.connect(VM_HOST, port=VM_PORT, username=VM_USER, password=VM_PASS, timeout=4, look_for_keys=False, allow_agent=False)
             
             sftp = client.open_sftp()
             try:
@@ -233,7 +235,7 @@ def get_stats():
 
 @app.route("/api/events")
 def get_events():
-    limit = int(request.args.get("limit", 100))
+    limit = int(request.args.get("limit", 150))
     search = request.args.get("search", "").lower()
     filter_status = request.args.get("status", "all")
     
@@ -277,57 +279,64 @@ def get_session(session_id):
 @app.route("/api/trigger_attack", methods=["POST"])
 def trigger_attack():
     data = request.json or {}
-    sc_key = data.get("scenario", "discovery")
-    if sc_key not in DEMO_SCENARIOS:
+    sc_key = data.get("scenario", "all")
+    target_host = (data.get("target_host") or VM_HOST).strip()
+    target_port = int(data.get("target_port") or VM_PORT)
+
+    scenarios_to_run = []
+    if sc_key == "all":
+        scenarios_to_run = list(DEMO_SCENARIOS.values())
+    elif sc_key in DEMO_SCENARIOS:
+        scenarios_to_run = [DEMO_SCENARIOS[sc_key]]
+    else:
         return jsonify({"status": "error", "message": "Kịch bản không hợp lệ"}), 400
-        
-    sc = DEMO_SCENARIOS[sc_key]
-    
+
     def run_attack_worker():
-        target_host = VM_HOST
-        target_port = 22  # Bắn vào Cổng 22 của Honeypot
-        
-        # 1. Nếu có failed attempts
-        if "failed_attempts" in sc:
-            for u, p in sc["failed_attempts"]:
+        for sc in scenarios_to_run:
+            try:
+                # 1. Thử mật khẩu sai nếu có
+                if "failed_attempts" in sc:
+                    for u, p in sc["failed_attempts"]:
+                        c = paramiko.SSHClient()
+                        c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                        try:
+                            c.connect(target_host, port=target_port, username=u, password=p, timeout=4, allow_agent=False, look_for_keys=False)
+                            c.close()
+                        except Exception:
+                            pass
+                        time.sleep(0.2)
+
+                # 2. Login thành công & chạy chuỗi lệnh
+                login_user = sc.get("user") or (sc["successful_login"][0] if "successful_login" in sc else "root")
+                login_pass = sc.get("pass") or (sc["successful_login"][1] if "successful_login" in sc else "123")
+
                 c = paramiko.SSHClient()
                 c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                try:
-                    c.connect(target_host, port=target_port, username=u, password=p, timeout=5, allow_agent=False, look_for_keys=False)
-                    c.close()
-                except Exception:
-                    pass
-                time.sleep(0.3)
-                
-        # 2. Login thành công
-        login_user = sc.get("user") or (sc["successful_login"][0] if "successful_login" in sc else "root")
-        login_pass = sc.get("pass") or (sc["successful_login"][1] if "successful_login" in sc else "123")
-        
-        c = paramiko.SSHClient()
-        c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        try:
-            c.connect(target_host, port=target_port, username=login_user, password=login_pass, timeout=10, allow_agent=False, look_for_keys=False)
-            chan = c.invoke_shell()
-            time.sleep(0.5)
-            
-            for cmd in sc.get("commands", []):
-                chan.send(cmd + "\n")
+                c.connect(target_host, port=target_port, username=login_user, password=login_pass, timeout=8, allow_agent=False, look_for_keys=False)
+                chan = c.invoke_shell()
                 time.sleep(0.4)
-                while chan.recv_ready():
-                    chan.recv(2048)
-                    
-            chan.send("exit\n")
-            time.sleep(0.3)
-            chan.close()
-            c.close()
-        except Exception as e:
-            print(f"[!] Lỗi phát động tấn công demo: {e}")
-            
+
+                for cmd in sc.get("commands", []):
+                    chan.send(cmd + "\n")
+                    time.sleep(0.35)
+                    while chan.recv_ready():
+                        chan.recv(2048)
+
+                chan.send("exit\n")
+                time.sleep(0.2)
+                chan.close()
+                c.close()
+            except Exception as e:
+                print(f"[!] Lỗi kịch bản {sc.get('scenario_id')}: {e}")
+            time.sleep(0.6)
+
     threading.Thread(target=run_attack_worker, daemon=True).start()
     return jsonify({
         "status": "success",
-        "message": f"Đang phát động kịch bản '{sc['title']}' vào Cổng 22...",
-        "scenario": sc_key
+        "message": f"Đang phát động {'TẤT CẢ 6 kịch bản tấn công' if sc_key == 'all' else sc_key} vào {target_host}:{target_port}...",
+        "scenario": sc_key,
+        "target_host": target_host,
+        "target_port": target_port
     })
 
 
@@ -420,7 +429,7 @@ DASHBOARD_HTML_TEMPLATE = """
           </h1>
           <p class="text-xs text-slate-400 flex items-center gap-2">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Hệ thống Bẫy Cổng 22 đang trực tuyến (VM: 192.168.101.218:22) | Chuẩn Machine Learning JSON Lines
+            Hệ thống Bẫy Cổng 22 / 2222 Trực tuyến (Mục tiêu: 192.168.101.250) | Chuẩn Machine Learning JSON Lines
           </p>
         </div>
       </div>
@@ -481,27 +490,39 @@ DASHBOARD_HTML_TEMPLATE = """
 
   <!-- CONTROL PANEL: LIVE ATTACK TRIGGER DEMO -->
   <div class="bg-gradient-to-r from-darkcard via-slate-900 to-darkcard border border-cyan-500/30 p-4 rounded-xl mb-6 shadow-xl neon-border">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
       <div>
         <h2 class="text-sm font-bold text-cyan-300 flex items-center gap-2">
-          <i class="fa-solid fa-bolt-lightning text-amber-400"></i> CÔNG CỤ PHÁT ĐỘNG TẤN CÔNG TRỰC TIẾP VÀO CỔNG 22 (DEMO TOOL)
+          <i class="fa-solid fa-bolt-lightning text-amber-400"></i> CÔNG CỤ PHÁT ĐỘNG TẤN CÔNG THỰC TẾ (LIVE DEMO TOOL)
         </h2>
         <p class="text-xs text-slate-400 mt-0.5">
-          Chọn kịch bản tấn công & bấm nút để kết nối socket SSH thật vào bẫy ảo, quan sát log nhảy theo thời gian thực!
+          Tùy chỉnh IP/Cổng bẫy &amp; chọn kịch bản để bắn socket SSH trực tiếp vào Honeypot, quan sát log nhảy thời gian thực!
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-        <select id="scenarioSelect" class="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2.5 outline-none focus:border-cyan-400 flex-1 md:flex-none">
+      <div class="flex flex-wrap items-center gap-2.5 w-full xl:w-auto">
+        <!-- TARGET HOST & PORT INPUTS -->
+        <div class="flex items-center gap-1.5 bg-slate-950 border border-slate-700 px-3 py-2 rounded-lg text-xs">
+          <i class="fa-solid fa-bullseye text-rose-400"></i>
+          <span class="text-slate-400 font-mono text-[11px]">Mục tiêu:</span>
+          <input id="targetHost" type="text" value="192.168.101.250" class="bg-transparent text-cyan-300 font-mono w-28 outline-none border-b border-transparent focus:border-cyan-400">
+          <span class="text-slate-600">:</span>
+          <input id="targetPort" type="text" value="2222" class="bg-transparent text-cyan-300 font-mono w-12 outline-none border-b border-transparent focus:border-cyan-400">
+        </div>
+
+        <!-- SCENARIO SELECTOR -->
+        <select id="scenarioSelect" class="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2.5 outline-none focus:border-cyan-400 flex-1 xl:flex-none font-sans font-semibold">
+          <option value="all" selected>🔥 TẤT CẢ KỊCH BẢN (CHẠY TOÀN BỘ 1 -&gt; 6)</option>
           <option value="discovery">🔍 1. Trinh sát Hệ thống (Discovery - T1082, T1057)</option>
           <option value="bruteforce">💥 2. Dò quét Mật khẩu SSH (Brute Force - T1110)</option>
           <option value="privesc">👑 3. Leo thang Sudo Root (PrivEsc - T1548)</option>
           <option value="cryptomining">⛏️ 4. Khởi chạy Bot Đào Coin (Mining - T1496)</option>
-          <option value="defense_evasion">🧹 5. Xóa Dấu vết Log & History (Evasion - T1070)</option>
+          <option value="defense_evasion">🧹 5. Xóa Dấu vết Log &amp; History (Evasion - T1070)</option>
           <option value="malware_download">📥 6. Tải Mã độc C2 qua Curl/Wget (Ingress - T1105)</option>
         </select>
 
-        <button id="btnAttack" onclick="triggerLiveAttack()" class="px-5 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs rounded-lg shadow-lg shadow-rose-600/30 transition flex items-center gap-2">
+        <!-- ATTACK BUTTON -->
+        <button id="btnAttack" onclick="triggerLiveAttack()" class="px-5 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs rounded-lg shadow-lg shadow-rose-600/30 transition flex items-center gap-2 whitespace-nowrap">
           <i class="fa-solid fa-play"></i> BẮN TẤN CÔNG THỰC TẾ
         </button>
       </div>
@@ -549,8 +570,8 @@ DASHBOARD_HTML_TEMPLATE = """
               <th class="py-2.5 px-3">Trạng thái</th>
               <th class="py-2.5 px-3">Nguồn (IP:Port)</th>
               <th class="py-2.5 px-3">User</th>
-              <th class="py-2.5 px-3">Lệnh & Output</th>
-              <th class="py-2.5 px-3">MITRE ATT&CK</th>
+              <th class="py-2.5 px-3">Lệnh &amp; Output</th>
+              <th class="py-2.5 px-3">MITRE ATT&amp;CK</th>
               <th class="py-2.5 px-3">Cảnh báo</th>
               <th class="py-2.5 px-3 text-right">Chi tiết</th>
             </tr>
@@ -572,7 +593,7 @@ DASHBOARD_HTML_TEMPLATE = """
       <!-- MITRE TECHNIQUES DISTRIBUTION -->
       <div class="bg-darkcard border border-darkborder rounded-xl p-4 shadow-xl">
         <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider mb-3 flex items-center justify-between">
-          <span>Chiến thuật MITRE ATT&CK</span>
+          <span>Chiến thuật MITRE ATT&amp;CK</span>
           <i class="fa-solid fa-chart-pie text-cyan-400"></i>
         </h3>
         <div class="h-48 relative flex items-center justify-center">
@@ -596,8 +617,8 @@ DASHBOARD_HTML_TEMPLATE = """
             <span>Đối chiếu với <code>scenario_manifest.json</code> độc lập, không dùng AI đoán.</span>
           </div>
           <div class="p-2.5 bg-slate-900/60 rounded-lg border border-slate-800">
-            <span class="text-emerald-400 font-bold block mb-0.5">3. Huấn luyện & Đánh giá</span>
-            <span>Chia tập 80/20 train mô hình phân loại tấn công đạt F1 > 0.95.</span>
+            <span class="text-emerald-400 font-bold block mb-0.5">3. Huấn luyện &amp; Đánh giá</span>
+            <span>Chia tập 80/20 train mô hình phân loại tấn công đạt F1 &gt; 0.95.</span>
           </div>
         </div>
       </div>
@@ -771,6 +792,8 @@ DASHBOARD_HTML_TEMPLATE = """
     // Kích hoạt tấn công thực tế
     async function triggerLiveAttack() {
       const sc = document.getElementById('scenarioSelect').value;
+      const host = document.getElementById('targetHost').value.trim();
+      const port = document.getElementById('targetPort').value.trim();
       const btn = document.getElementById('btnAttack');
       btn.disabled = true;
       btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang tấn công...`;
@@ -779,7 +802,7 @@ DASHBOARD_HTML_TEMPLATE = """
         const res = await fetch('/api/trigger_attack', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scenario: sc })
+          body: JSON.stringify({ scenario: sc, target_host: host, target_port: port })
         });
         const data = await res.json();
         setTimeout(() => {
@@ -792,7 +815,7 @@ DASHBOARD_HTML_TEMPLATE = """
         setTimeout(() => {
           btn.disabled = false;
           btn.innerHTML = `<i class="fa-solid fa-play"></i> BẮN TẤN CÔNG THỰC TẾ`;
-        }, 2000);
+        }, 3000);
       }
     }
 
@@ -867,7 +890,7 @@ if __name__ == "__main__":
     print("=" * 75)
     print("🚀 [SOC DASHBOARD] KHỞI ĐỘNG BẢNG ĐIỀU KHIỂN REALTIME HONEYPOT...")
     print(f"🌐 Truy cập ngay tại trình duyệt: http://localhost:{port}")
-    print(f"📡 Đồng bộ thời gian thực từ Honeypot VM: {VM_HOST}:22")
-    print(f"⚡ Tích hợp Live Demo Attack Trigger & Nạp 5.145 Dataset")
+    print(f"🎯 Mục tiêu tấn công mặc định: {VM_HOST}:{VM_PORT}")
+    print(f"⚡ Tích hợp Live Demo Attack Trigger (Hỗ trợ chạy TẤT CẢ KỊCH BẢN)")
     print("=" * 75)
     app.run(host="0.0.0.0", port=port, debug=False)
