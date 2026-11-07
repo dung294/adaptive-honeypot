@@ -167,10 +167,34 @@ def run_single_scenario(sc: dict, host=TARGET_HOST, port=TARGET_PORT):
         print(f"   [!] Lỗi kịch bản: {e}")
 
 
+def detect_honeypot_port(host: str, preferred_port: int) -> int:
+    """Kiểm tra xem Honeypot đang chạy ở cổng nào (22 hay 2222)."""
+    ports_to_try = [preferred_port, 2222 if preferred_port == 22 else 22]
+    for p in ports_to_try:
+        try:
+            s = socket.socket()
+            s.settimeout(2)
+            s.connect((host, p))
+            banner = s.recv(1024)
+            s.close()
+            # Bẫy Honeypot trả về banner Ubuntu-3ubuntu0.6
+            if b"Ubuntu-3ubuntu0.6" in banner:
+                return p
+        except Exception:
+            pass
+    return preferred_port
+
+
 def main():
     target_ip = sys.argv[1] if len(sys.argv) > 1 else TARGET_HOST
     target_port = int(sys.argv[2]) if len(sys.argv) > 2 else TARGET_PORT
     
+    detected_port = detect_honeypot_port(target_ip, target_port)
+    if detected_port != target_port:
+        print(f"💡 [PORT INFO] Phát hiện Honeypot trên máy {target_ip} đang lắng nghe ở cổng {detected_port} (cổng {target_port} là SSH của hệ điều hành).")
+        print(f"👉 Tự động điều hướng kết nối vào cổng bẫy: {detected_port}")
+        target_port = detected_port
+
     print("=" * 80)
     print(f"🔥 [CHẠY TẤT CẢ KỊCH BẢN TẤN CÔNG] MỤC TIÊU: {target_ip}:{target_port}")
     print(f"📋 Tổng số kịch bản chuẩn bị thực thi: {len(ALL_SCENARIOS)}")

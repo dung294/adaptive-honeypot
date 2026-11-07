@@ -166,35 +166,42 @@ def load_events_from_disk():
 
 
 def vm_log_sync_worker():
-    """Background worker liên tục tail log từ máy ảo VMware về Dashboard."""
+    """Background worker tail log từ máy ảo VMware hoặc máy chủ Honeypot về Dashboard."""
     global events_cache
+    sync_targets = [
+        ("192.168.101.218", 22022, "nhuthang", "123"),
+        ("192.168.101.250", 22, "nhuthang", "123")
+    ]
     while True:
-        try:
-            client = paramiko.SSHClient()
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            # Thử kết nối SSH tới máy chủ quản lý để lấy log
-            client.connect(VM_HOST, port=VM_PORT, username=VM_USER, password=VM_PASS, timeout=4, look_for_keys=False, allow_agent=False)
-            
-            sftp = client.open_sftp()
+        synced = False
+        for host, port, user, pwd in sync_targets:
             try:
-                stat = sftp.stat(REMOTE_LOG_FILE)
-                remote_size = stat.st_size
+                client = paramiko.SSHClient()
+                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                client.connect(host, port=port, username=user, password=pwd, timeout=3, look_for_keys=False, allow_agent=False)
                 
-                local_size = LOCAL_EVENTS_FILE.stat().st_size if LOCAL_EVENTS_FILE.exists() else 0
-                if remote_size > local_size:
-                    with sftp.open(REMOTE_LOG_FILE, "r") as rf:
-                        rf.seek(local_size)
-                        new_data = rf.read().decode("utf-8", errors="ignore")
-                        if new_data:
-                            with open(LOCAL_EVENTS_FILE, "a", encoding="utf-8") as lf:
-                                lf.write(new_data)
-                            load_events_from_disk()
-            finally:
-                sftp.close()
-                client.close()
-        except Exception:
-            pass
-        time.sleep(2)
+                sftp = client.open_sftp()
+                try:
+                    stat = sftp.stat(REMOTE_LOG_FILE)
+                    remote_size = stat.st_size
+                    local_size = LOCAL_EVENTS_FILE.stat().st_size if LOCAL_EVENTS_FILE.exists() else 0
+                    if remote_size > local_size:
+                        with sftp.open(REMOTE_LOG_FILE, "r") as rf:
+                            rf.seek(local_size)
+                            new_data = rf.read().decode("utf-8", errors="ignore")
+                            if new_data:
+                                with open(LOCAL_EVENTS_FILE, "a", encoding="utf-8") as lf:
+                                    lf.write(new_data)
+                                load_events_from_disk()
+                    synced = True
+                finally:
+                    sftp.close()
+                    client.close()
+                if synced:
+                    break
+            except Exception:
+                pass
+        time.sleep(3 if synced else 10)
 
 
 # Khởi chạy luồng đồng bộ log
@@ -280,8 +287,32 @@ def get_session(session_id):
 def trigger_attack():
     data = request.json or {}
     sc_key = data.get("scenario", "all")
-    target_host = (data.get("target_host") or VM_HOST).strip()
-    target_port = int(data.get("target_port") or VM_PORT)
+    target_host = (data.get("target_host") or "192.168.101.250").strip()
+    req_port = int(data.get("target_port") or 22)
+
+    # Tự động kiểm tra cổng Honeypot khả dụng (Smart Port Detection)
+    target_port = req_port
+    honeypot_detected_port = None
+    
+    # Kiểm tra cổng người dùng yêu cầu trước
+    for test_port in [req_port, 2222 if req_port == 22 else 22]:
+        try:
+            s = socket.socket()
+            s.settimeout(1.5)
+            s.connect((target_host, test_port))
+            banner = s.recv(1024)
+            s.close()
+            # Bẫy Honeypot trả về banner Ubuntu-3ubuntu0.6 hoặc phản hồi mở
+            if b"Ubuntu-3ubuntu0.6" in banner:
+                honeypot_detected_port = test_port
+                break
+            elif b"OpenSSH" in banner and honeypot_detected_port is None:
+                honeypot_detected_port = test_port
+        except Exception:
+            pass
+
+    if honeypot_detected_port:
+        target_port = honeypot_detected_port
 
     scenarios_to_run = []
     if sc_key == "all":
@@ -291,49 +322,58 @@ def trigger_attack():
     else:
         return jsonify({"status": "error", "message": "Kịch bản không hợp lệ"}), 400
 
-    def run_attack_worker():
+    def run_attack_worker(final_host, final_port):
         for sc in scenarios_to_run:
             try:
-                # 1. Thử mật khẩu sai nếu có
+                # 1. Thử mật khẩu sai nếu có (Kịch bản Brute-force)
                 if "failed_attempts" in sc:
                     for u, p in sc["failed_attempts"]:
-                        c = paramiko.SSHClient()
-                        c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                         try:
-                            c.connect(target_host, port=target_port, username=u, password=p, timeout=4, allow_agent=False, look_for_keys=False)
+                            c = paramiko.SSHClient()
+                            c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                            c.connect(final_host, port=final_port, username=u, password=p, timeout=3, allow_agent=False, look_for_keys=False, banner_timeout=5)
                             c.close()
                         except Exception:
+                            # Với Brute Force, mật khẩu sai là kết quả mong đợi của bẫy
                             pass
-                        time.sleep(0.2)
+                        time.sleep(0.15)
 
-                # 2. Login thành công & chạy chuỗi lệnh
+                # 2. Login thành công & chạy chuỗi lệnh bẫy ảo
                 login_user = sc.get("user") or (sc["successful_login"][0] if "successful_login" in sc else "root")
                 login_pass = sc.get("pass") or (sc["successful_login"][1] if "successful_login" in sc else "123")
 
-                c = paramiko.SSHClient()
-                c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                c.connect(target_host, port=target_port, username=login_user, password=login_pass, timeout=8, allow_agent=False, look_for_keys=False)
-                chan = c.invoke_shell()
-                time.sleep(0.4)
-
-                for cmd in sc.get("commands", []):
-                    chan.send(cmd + "\n")
+                try:
+                    c = paramiko.SSHClient()
+                    c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                    c.connect(final_host, port=final_port, username=login_user, password=login_pass, timeout=6, allow_agent=False, look_for_keys=False, banner_timeout=8)
+                    chan = c.invoke_shell()
                     time.sleep(0.35)
-                    while chan.recv_ready():
-                        chan.recv(2048)
 
-                chan.send("exit\n")
-                time.sleep(0.2)
-                chan.close()
-                c.close()
+                    for cmd in sc.get("commands", []):
+                        chan.send(cmd + "\n")
+                        time.sleep(0.3)
+                        while chan.recv_ready():
+                            chan.recv(2048)
+
+                    chan.send("exit\n")
+                    time.sleep(0.2)
+                    chan.close()
+                    c.close()
+                except Exception as conn_err:
+                    print(f"[-] Kịch bản {sc.get('scenario_id')}: {conn_err}")
             except Exception as e:
                 print(f"[!] Lỗi kịch bản {sc.get('scenario_id')}: {e}")
-            time.sleep(0.6)
+            time.sleep(0.4)
 
-    threading.Thread(target=run_attack_worker, daemon=True).start()
+    threading.Thread(target=run_attack_worker, args=(target_host, target_port), daemon=True).start()
+    
+    msg_detail = f"Đang phát động {'TẤT CẢ 6 kịch bản tấn công' if sc_key == 'all' else sc_key} vào {target_host}:{target_port}"
+    if target_port != req_port:
+        msg_detail += f" (Tự động phát hiện Honeypot trên cổng {target_port} thay vì {req_port})"
+        
     return jsonify({
         "status": "success",
-        "message": f"Đang phát động {'TẤT CẢ 6 kịch bản tấn công' if sc_key == 'all' else sc_key} vào {target_host}:{target_port}...",
+        "message": msg_detail,
         "scenario": sc_key,
         "target_host": target_host,
         "target_port": target_port
