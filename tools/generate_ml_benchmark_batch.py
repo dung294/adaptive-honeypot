@@ -35,7 +35,7 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 LOGS_DIR = BASE_DIR / "logs"
 OUTPUT_BATCH_FILE = LOGS_DIR / "ml_benchmark_batch_raw.jsonl"
 OUTPUT_MANIFEST_FILE = LOGS_DIR / "ml_benchmark_manifest.json"

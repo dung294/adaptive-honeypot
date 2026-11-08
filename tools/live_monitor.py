@@ -20,7 +20,7 @@ VM_PORT = 22
 VM_USER = "nhuthang"
 VM_PASS = "123"
 REMOTE_LOG = "/home/nhuthang/adaptive-honeypot/logs/events.jsonl"
-LOCAL_LOG = Path(__file__).resolve().parent / "logs" / "events.jsonl"
+LOCAL_LOG = Path(__file__).resolve().parent.parent / "logs" / "events.jsonl"
 LOCAL_LOG.parent.mkdir(parents=True, exist_ok=True)
 
 def format_event(raw_line: str) -> str:
