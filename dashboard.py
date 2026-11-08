@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Dict, List, Any
 import paramiko
 from flask import Flask, jsonify, request, render_template_string
+from threat_intel.mitre_mapper import MitreMapper
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -116,26 +117,35 @@ last_read_offset = 0
 
 
 def analyze_mitre_and_alert(event: Dict[str, Any]) -> Dict[str, Any]:
-    """Ánh xạ tự động MITRE ATT&CK và tính mức cảnh báo cho event."""
+    """Ánh xạ tự động MITRE ATT&CK và tính mức cảnh báo cho event theo chuẩn MitreMapper."""
+    if event.get("mitre_matches") and event.get("alert_level"):
+        return event
+
     cmd = event.get("command", "")
     status = event.get("event_status", "")
-    
     matches = []
-    highest_severity = "LOW"
-    
-    if status == "login_failed" or "Auth_Failed" in status:
-        matches.append({"id": "T1110.001", "name": "Brute Force: Password Guessing", "tactic": "Credential Access"})
+    highest_severity = event.get("severity", "LOW").upper()
+
+    if "Auth_Failed" in status or status == "login_failed":
+        auth_map = MitreMapper.map_auth(False, event.get("username", "unknown"), "")
+        matches.append({"id": auth_map["technique_id"], "name": auth_map["technique_name"], "tactic": auth_map["tactic_name"]})
+        highest_severity = "HIGH"
+    elif "Auth_Success" in status:
+        auth_map = MitreMapper.map_auth(True, event.get("username", "root"), "")
+        matches.append({"id": auth_map["technique_id"], "name": auth_map["technique_name"], "tactic": auth_map["tactic_name"]})
         highest_severity = "MEDIUM"
-        
-    for r in MITRE_MAPPING_RULES:
-        if r["pattern"] in cmd.lower():
-            matches.append({"id": r["id"], "name": r["name"], "tactic": r["tactic"]})
-            if r["severity"] == "CRITICAL":
-                highest_severity = "CRITICAL"
-            elif r["severity"] == "HIGH" and highest_severity != "CRITICAL":
-                highest_severity = "HIGH"
-            elif r["severity"] == "MEDIUM" and highest_severity not in ("CRITICAL", "HIGH"):
-                highest_severity = "MEDIUM"
+    elif cmd:
+        cmd_map = MitreMapper.map_command(cmd)
+        matches.append({"id": cmd_map["technique_id"], "name": cmd_map["technique_name"], "tactic": cmd_map["tactic_name"]})
+        highest_severity = cmd_map.get("severity", "LOW").upper()
+    else:
+        for r in MITRE_MAPPING_RULES:
+            if r["pattern"] in cmd.lower():
+                matches.append({"id": r["id"], "name": r["name"], "tactic": r["tactic"]})
+                if r["severity"] == "CRITICAL":
+                    highest_severity = "CRITICAL"
+                elif r["severity"] == "HIGH" and highest_severity != "CRITICAL":
+                    highest_severity = "HIGH"
 
     event["mitre_matches"] = matches
     event["alert_level"] = highest_severity

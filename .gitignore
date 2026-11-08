@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.swp
+*.swo
 
 # Cài đặt môi trường ảo
 venv/
@@ -11,38 +13,43 @@ env/
 # Môi trường cấu hình bảo mật
 .env
 
-# Khóa riêng tư bảo mật SSH (Không bao giờ đẩy lên public repo!)
+# Khóa riêng tư SSH
 *.key
 server.key
 *.pem
 
-# File tạo log tấn công mô phỏng (Lab / CTI Generator) - Giữ local, không push
-attack_lab_generator.py
-
-# Tài liệu PDF & Script sinh báo cáo
+# Tài liệu PDF, Word và các tệp nén nhị phân
 *.pdf
 *.docx
-build_hardcore_pdf.py
+*.zip
+*.tar.gz
+*.rar
+*.7z
 
-# Mẫu mã độc thu thập (Quarantine)
+# Script sinh tài liệu báo cáo cũ / Lab tạm
+build_*_pdf.py
+generate_*_pdf.py
+attack_lab_generator.py
+
+# Mẫu mã độc thu thập (Quarantine - chỉ lưu .gitkeep)
 quarantine/*
 !quarantine/.gitkeep
 
-# Nhật ký sự kiện thời gian thực
+# Nhật ký sự kiện thời gian thực (chỉ lưu .gitkeep)
 logs/*
 !logs/.gitkeep
-!logs/sessions.json
-!logs/events.jsonl
 
+# Dữ liệu chạy tạm trong benchmark (chỉ giữ run-2026-11-06-train-5000)
+data/raw/run-2026-11-08-*
+data/raw/run-*-test*
+data/raw/*.zip
 
+# File log runtime
 *.log
 
 # IDE & Editor
 .vscode/
 .idea/
-*.swp
-*.swo
 
-build_full_academic_docs.py
-
+# Script đồng bộ máy ảo nội bộ
 sync_to_vm.py

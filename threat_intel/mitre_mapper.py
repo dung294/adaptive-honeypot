@@ -409,8 +409,20 @@ class MitreMapper:
         },
 
         # =================================================================
-        # 11. IMPACT & SABOTAGE (SAFE EMULATION)
+        # 11. IMPACT & SABOTAGE (SAFE EMULATION) & CRYPTOMINING
         # =================================================================
+        {
+            "pattern": re.compile(r"\b(xmrig|minerd|minexmr|cryptonight|stratum\+tcp|xmr_miner|\.?/?xmr\b|nohup\s+\./xmr)\b", re.IGNORECASE),
+            "macro_class": "Resource Hijacking & Cryptomining",
+            "framework": "MITRE ATT&CK for Enterprise",
+            "tactic_id": "TA0040",
+            "tactic_name": "Impact",
+            "technique_id": "T1496",
+            "technique_name": "Resource Hijacking: Cryptomining",
+            "subtechnique_id": None,
+            "scenario": "Deploying & Executing Cryptomining Malware",
+            "severity": "Critical"
+        },
         {
             "pattern": re.compile(r"\b(kill\s+-9|killall|pkill)\b", re.IGNORECASE),
             "macro_class": "Impact & Sabotage",
@@ -619,3 +631,7 @@ class MitreMapper:
                 "severity": "Info",
                 "command_evidence": "TCP Socket Connect"
             }
+
+
+# Alias for backward and cross-module compatibility
+MitreMapper.classify = MitreMapper.map_command

@@ -5,15 +5,16 @@ import urllib.parse
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from config import EVENT_LOG_FILE, LOGS_DIR
+from threat_intel.mitre_mapper import MitreMapper
 from threat_intel.ml_exporter import MLLogExporter
 
 SESSIONS_LOG_FILE = LOGS_DIR / "sessions.json"
 
 class HoneypotLogger:
     """
-    Standard Operational Logger for Adaptive SSH Honeypot.
-    Ghi nhận log sự kiện thô nguyên bản (Raw Event Logs) phục vụ giám sát hoạt động,
-    hoàn toàn không gán nhãn MITRE hay gán nhãn bài toán Học máy (Unlabeled Logs).
+    Standard Operational & CTI Logger for Adaptive SSH Honeypot.
+    Tự động ghi nhận log sự kiện và gán nhãn ma trận MITRE ATT&CK for Enterprise / ATLAS
+    theo kiến trúc 2 tầng (Macro-Class cho ML và MITRE Technique cho CTI).
     """
     def __init__(self, log_path: Path = EVENT_LOG_FILE, sessions_path: Path = SESSIONS_LOG_FILE):
         self.log_path = log_path
@@ -97,10 +98,12 @@ class HoneypotLogger:
             pass
 
     def log_connection(self, source_ip: str, source_port: int, status: str = "Connected"):
-        """Ghi nhận sự kiện kết nối socket SSH thông thường."""
+        """Ghi nhận sự kiện kết nối socket SSH và gán nhãn MITRE Network Service Discovery."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         session_id = str(uuid.uuid4())
         
+        mitre_info = MitreMapper.map_connection(status)
+
         event_record = {
             "timestamp": now,
             "session_id": session_id,
@@ -109,7 +112,16 @@ class HoneypotLogger:
             "protocol": "SSH",
             "event_type": "Connection",
             "event_status": status,
-            "message": f"SSH connection {status}"
+            "message": f"SSH connection {status}",
+            "macro_class": mitre_info["macro_class"],
+            "mitre_framework": mitre_info["framework"],
+            "mitre_tactic": mitre_info["tactic_name"],
+            "mitre_tactic_id": mitre_info["tactic_id"],
+            "mitre_technique_id": mitre_info["technique_id"],
+            "mitre_technique_name": mitre_info["technique_name"],
+            "subtechnique_id": mitre_info["subtechnique_id"],
+            "severity": mitre_info["severity"],
+            "scenario": mitre_info["scenario"]
         }
         self._write_event(event_record)
 
@@ -131,10 +143,16 @@ class HoneypotLogger:
         session_id: str = None,
         is_admin: bool = False
     ):
-        """Ghi nhận sự kiện xác thực SSH thông thường."""
+        """Ghi nhận sự kiện xác thực SSH và tự động gán nhãn MITRE ATT&CK."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         if not session_id:
             session_id = str(uuid.uuid4())
+
+        mitre_info = MitreMapper.map_auth(success, username, password)
+
+        # URL-encoding an toàn theo phương pháp Uphill Security
+        safe_user = urllib.parse.quote(username, safe="")
+        safe_pass = urllib.parse.quote(password, safe="")
 
         event_record = {
             "timestamp": now,
@@ -145,10 +163,28 @@ class HoneypotLogger:
             "event_type": "Authentication",
             "username": username,
             "password": password,
+            "encoded_username": safe_user,
+            "encoded_password": safe_pass,
             "auth_success": success,
             "is_admin": is_admin,
             "event_status": "Auth_Success" if success else "Auth_Failed",
-            "message": f"SSH login {'successful' if success else 'failed'} for user '{username}'"
+            "message": f"SSH login {'successful' if success else 'failed'} for user '{username}'",
+            "macro_class": mitre_info["macro_class"],
+            "mitre_framework": mitre_info["framework"],
+            "mitre_tactic": mitre_info["tactic_name"],
+            "mitre_tactic_id": mitre_info["tactic_id"],
+            "mitre_technique_id": mitre_info["technique_id"],
+            "mitre_technique_name": mitre_info["technique_name"],
+            "subtechnique_id": mitre_info["subtechnique_id"],
+            "severity": mitre_info["severity"],
+            "scenario": mitre_info["scenario"],
+            "mitre_techniques": [
+                {
+                    "technique_id": mitre_info["technique_id"],
+                    "technique_name": mitre_info["technique_name"],
+                    "tactic": mitre_info["tactic_name"]
+                }
+            ]
         }
         self._write_event(event_record)
 
@@ -173,42 +209,6 @@ class HoneypotLogger:
 
         return event_record
 
-    def log_auth_attempt(self, source_ip: str, source_port: int, username: str, password: str) -> Dict[str, Any]:
-        """Ghi nhận nỗ lực dò quét mật khẩu (Credential Harvesting / Brute-force)."""
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        event_key = f"{now}:{source_ip}:{source_port}:Auth"
-        
-        # URL-encoding an toàn theo phương pháp của Uphill Security
-        safe_user = urllib.parse.quote(username, safe="")
-        safe_pass = urllib.parse.quote(password, safe="")
-
-        record = {
-            "event_key": event_key,
-            "timestamp": now,
-            "source_ip": source_ip,
-            "source_port": source_port,
-            "protocol": "SSH",
-            "event_status": "Auth_Attempt",
-            "message": "SSH Authentication Attempt",
-            "username": username,
-            "password": password,
-            "encoded_username": safe_user,
-            "encoded_password": safe_pass,
-            "handler_type": "PRE_AUTH_TRAP",
-            "mitre_techniques": [
-                {
-                    "technique_id": "T1110.001",
-                    "technique_name": "Password Guessing",
-                    "tactic": "Credential Access"
-                }
-            ],
-            "ingested_at": now
-        }
-
-        with open(self.log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
-        return record
-
     def log_interaction(
         self,
         session_id: str,
@@ -221,9 +221,11 @@ class HoneypotLogger:
         latency_ms: float,
         mitre_matches: Optional[Any] = None
     ):
-        """Ghi nhận lệnh được thực thi và phản hồi của AI Honeypot (không gán nhãn)."""
+        """Ghi nhận lệnh được thực thi và tự động gán nhãn MITRE ATT&CK & ATLAS."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         clean_output = command_output.rstrip("\r\n") if command_output else ""
+
+        mitre_info = MitreMapper.map_command(command)
 
         event_record = {
             "timestamp": now,
@@ -237,11 +239,27 @@ class HoneypotLogger:
             "command": command,
             "command_output": clean_output,
             "handler_type": handler_type,
-            "latency_ms": round(latency_ms, 2)
+            "latency_ms": round(latency_ms, 2),
+            "macro_class": mitre_info["macro_class"],
+            "mitre_framework": mitre_info["framework"],
+            "mitre_tactic": mitre_info["tactic_name"],
+            "mitre_tactic_id": mitre_info["tactic_id"],
+            "mitre_technique_id": mitre_info["technique_id"],
+            "mitre_technique_name": mitre_info["technique_name"],
+            "subtechnique_id": mitre_info["subtechnique_id"],
+            "severity": mitre_info["severity"],
+            "scenario": mitre_info["scenario"],
+            "mitre_matches": [
+                {
+                    "id": mitre_info["technique_id"],
+                    "name": mitre_info["technique_name"],
+                    "tactic": mitre_info["tactic_name"]
+                }
+            ]
         }
         self._write_event(event_record)
 
-        # Cập nhật session
+        # Cập nhật session với đầy đủ nhãn MITRE
         sess = self._get_or_create_session(session_id, source_ip, source_port, username)
         sess["end_time"] = now
         sess["command_count"] += 1
@@ -251,7 +269,12 @@ class HoneypotLogger:
             "command": command,
             "output": clean_output,
             "handler_type": handler_type,
-            "latency_ms": round(latency_ms, 2)
+            "latency_ms": round(latency_ms, 2),
+            "macro_class": mitre_info["macro_class"],
+            "mitre_tactic": mitre_info["tactic_name"],
+            "mitre_technique_id": mitre_info["technique_id"],
+            "mitre_technique_name": mitre_info["technique_name"],
+            "severity": mitre_info["severity"]
         })
 
         if self.ml_exporter:
@@ -272,7 +295,7 @@ class HoneypotLogger:
         commands_count: int,
         reason: str = "normal"
     ):
-        """Ghi nhận kết thúc phiên SSH thông thường."""
+        """Ghi nhận kết thúc phiên SSH."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         event_record = {

@@ -50,9 +50,21 @@ MITRE_TACTICS = {
     "TA0007": "Discovery",
     "TA0008": "Lateral Movement",
     "TA0011": "Command and Control",
+    "TA0040": "Impact",
 }
 
 MITRE_COMMAND_RULES = [
+    # 0. IMPACT & RESOURCE HIJACKING (TA0040)
+    {
+        "pattern": re.compile(r"\b(xmrig|minerd|minexmr|cryptonight|stratum\+tcp|xmr_miner|\.?/?xmr\b|nohup\s+\./xmr)\b", re.IGNORECASE),
+        "tactic_id": "TA0040",
+        "tactic_name": "Impact",
+        "technique_id": "T1496",
+        "technique_name": "Resource Hijacking: Cryptomining",
+        "subtechnique_id": None,
+        "scenario": "Resource Hijacking (Cryptomining Malware Execution)",
+        "severity": "Critical"
+    },
     # 1. COMMAND AND CONTROL (TA0011)
     {
         "pattern": re.compile(r"\b(curl|wget|scp|sftp|ftp|tftp)\b", re.IGNORECASE),
