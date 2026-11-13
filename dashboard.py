@@ -20,6 +20,7 @@ from typing import Dict, List, Any
 import paramiko
 from flask import Flask, jsonify, request, render_template_string
 from threat_intel.mitre_mapper import MitreMapper
+from threat_intel.misp_comparator import misp_comparator
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -30,6 +31,7 @@ if hasattr(sys.stdout, "reconfigure"):
 BASE_DIR = Path(__file__).resolve().parent
 LOCAL_LOGS_DIR = BASE_DIR / "logs"
 LOCAL_EVENTS_FILE = LOCAL_LOGS_DIR / "events.jsonl"
+UNLABELED_SESSIONS_FILE = LOCAL_LOGS_DIR / "unlabeled_sessions.jsonl"
 LOCAL_LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 DATASET_5K_FILE = BASE_DIR / "data" / "raw" / "run-2026-11-06-train-5000" / "events.jsonl"
@@ -430,6 +432,80 @@ def clear_dashboard():
     with open(LOCAL_EVENTS_FILE, "w", encoding="utf-8") as f:
         pass
     return jsonify({"status": "success", "message": "Đã làm sạch log trên Dashboard!"})
+
+
+@app.route("/api/feed/unlabeled_sessions")
+def get_unlabeled_sessions():
+    """Cung cấp feed các phiên tấn công CHƯA GÁN NHÃN chuẩn chuỗi full_session cho mô hình AI."""
+    limit = int(request.args.get("limit", 50))
+    sessions = []
+    if UNLABELED_SESSIONS_FILE.exists():
+        with open(UNLABELED_SESSIONS_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        sessions.append(json.loads(line))
+                    except Exception:
+                        pass
+    return jsonify(list(reversed(sessions))[:limit])
+
+
+@app.route("/api/feed/latest_session")
+def get_latest_session():
+    """Trả về 1 phiên mới nhất chưa gán nhãn để máy AI đối tác fetch trực tiếp."""
+    if UNLABELED_SESSIONS_FILE.exists():
+        with open(UNLABELED_SESSIONS_FILE, "r", encoding="utf-8") as f:
+            lines = [l.strip() for l in f if l.strip()]
+            if lines:
+                try:
+                    latest = json.loads(lines[-1])
+                    return jsonify({"status": "success", "session": latest})
+                except Exception as e:
+                    return jsonify({"status": "error", "message": str(e)}), 500
+    # Fallback to sessions.json
+    sess_json = LOCAL_LOGS_DIR / "sessions.json"
+    if sess_json.exists():
+        try:
+            with open(sess_json, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if data:
+                    s = data[0]
+                    unlabeled = {
+                        "session_id": s.get("session_id"),
+                        "attacker_ip": s.get("attacker_ip") or s.get("source_ip"),
+                        "attacker_port": s.get("attacker_port") or s.get("source_port"),
+                        "timestamp": s.get("timestamp") or s.get("start_time"),
+                        "first_timestamp": s.get("first_timestamp"),
+                        "auth": s.get("auth") or {"username": s.get("username"), "password": s.get("passwords_tried", [""])[-1] if s.get("passwords_tried") else ""},
+                        "commands": s.get("commands", []),
+                        "full_session": s.get("full_session", "")
+                    }
+                    return jsonify({"status": "success", "session": unlabeled})
+        except Exception:
+            pass
+    return jsonify({"status": "empty", "message": "Chưa có phiên tấn công nào"}), 404
+
+
+@app.route("/api/misp/compare", methods=["POST"])
+def misp_compare_endpoint():
+    """Endpoint nhận log phiên hoặc session_id và trả về kết quả đối soát IoC với MISP."""
+    req_data = request.json or {}
+    res = misp_comparator.compare_session(req_data)
+    return jsonify({"status": "success", "misp_result": res})
+
+
+@app.route("/api/feed/misp_matches")
+def get_misp_matches():
+    """Trả về danh sách kết quả đối soát IoC với MISP mới nhất."""
+    m_file = LOCAL_LOGS_DIR / "misp_matches.json"
+    if m_file.exists():
+        try:
+            with open(m_file, "r", encoding="utf-8") as f:
+                return jsonify(json.load(f))
+        except Exception:
+            pass
+    return jsonify([])
 
 
 DASHBOARD_HTML_TEMPLATE = """

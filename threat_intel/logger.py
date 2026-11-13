@@ -7,8 +7,10 @@ from typing import Dict, Any, List, Optional
 from config import EVENT_LOG_FILE, LOGS_DIR, ENABLE_THREAT_LABELING
 from threat_intel.mitre_mapper import MitreMapper
 from threat_intel.ml_exporter import MLLogExporter
+from threat_intel.misp_comparator import misp_comparator
 
 SESSIONS_LOG_FILE = LOGS_DIR / "sessions.json"
+UNLABELED_SESSIONS_FILE = LOGS_DIR / "unlabeled_sessions.jsonl"
 
 class HoneypotLogger:
     """
@@ -61,14 +63,86 @@ class HoneypotLogger:
         return sess
 
     def _flush_session_to_json(self, session_id: str):
-        """Lưu hoặc cập nhật session vào tệp logs/sessions.json chuẩn indent=2"""
+        """
+        Lưu hoặc cập nhật session vào tệp logs/sessions.json chuẩn indent=2
+        và logs/unlabeled_sessions.jsonl phục vụ mô hình AI Machine Learning & đối soát MISP.
+        """
         if session_id not in self.active_sessions:
             return
         
         sess_data = self.active_sessions.pop(session_id)
 
+        # 1. Trích xuất danh sách lệnh sạch
+        commands_list = []
+        for c in sess_data.get("commands", []):
+            if isinstance(c, dict) and "command" in c:
+                cmd_str = str(c["command"]).strip()
+                if cmd_str:
+                    commands_list.append(cmd_str)
+            elif isinstance(c, str):
+                cmd_str = c.strip()
+                if cmd_str:
+                    commands_list.append(cmd_str)
+
+        # Nếu phiên kết thúc bình thường và lệnh cuối chưa có exit
+        if sess_data.get("status") == "Closed" and commands_list and commands_list[-1] != "exit":
+            commands_list.append("exit")
+
+        # 2. Xây dựng chuỗi full_session cách nhau bởi " ; " và kết thúc bằng " ;" (chuẩn file train parquet)
+        full_session = " ; ".join(commands_list) + " ;" if commands_list else ""
+
+        # 3. Chuẩn hóa first_timestamp: "YYYY-MM-DD HH:MM:SS"
+        start_raw = sess_data.get("start_time", "")
+        try:
+            dt = datetime.datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
+            first_ts = dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            first_ts = start_raw
+
+        last_pass = sess_data["passwords_tried"][-1] if sess_data.get("passwords_tried") else "123456"
+
+        # 4. Bản ghi log CHƯA GÁN NHÃN (Raw Unlabeled Log)
+        unlabeled_session = {
+            "session_id": sess_data["session_id"],
+            "attacker_ip": sess_data["source_ip"],
+            "attacker_port": sess_data["source_port"],
+            "timestamp": sess_data["start_time"],
+            "first_timestamp": first_ts,
+            "auth": {
+                "username": sess_data["username"] or "root",
+                "password": last_pass
+            },
+            "commands": commands_list,
+            "full_session": full_session
+        }
+
+        # Lưu bản ghi chưa gán nhãn vào stream file logs/unlabeled_sessions.jsonl
+        try:
+            with open(UNLABELED_SESSIONS_FILE, "a", encoding="utf-8") as uf:
+                uf.write(json.dumps(unlabeled_session, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
+
+        # 5. Tự động đối soát với MISP IoC Database
+        misp_result = None
+        try:
+            misp_result = misp_comparator.compare_session(unlabeled_session)
+        except Exception:
+            pass
+
+        # 6. Bản ghi lưu vào sessions.json (đầy đủ để Dashboard đọc & kiểm tra)
         export_sess = {
             "session_id": sess_data["session_id"],
+            "attacker_ip": sess_data["source_ip"],
+            "attacker_port": sess_data["source_port"],
+            "timestamp": sess_data["start_time"],
+            "first_timestamp": first_ts,
+            "auth": {
+                "username": sess_data["username"] or "root",
+                "password": last_pass
+            },
+            "commands": commands_list,
+            "full_session": full_session,
             "source_ip": sess_data["source_ip"],
             "source_port": sess_data["source_port"],
             "username": sess_data["username"],
@@ -77,9 +151,10 @@ class HoneypotLogger:
             "start_time": sess_data["start_time"],
             "end_time": sess_data["end_time"],
             "duration_seconds": sess_data["duration_seconds"],
-            "command_count": sess_data["command_count"],
+            "command_count": len(commands_list),
             "status": sess_data["status"],
-            "commands": sess_data["commands"]
+            "misp_intel": misp_result,
+            "command_timeline": sess_data["commands"]
         }
 
         try:

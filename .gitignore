@@ -40,8 +40,8 @@ logs/*
 !logs/.gitkeep
 
 # Dữ liệu chạy tạm trong benchmark (chỉ giữ run-2026-11-06-train-5000)
-data/raw/run-2026-11-08-*
-data/raw/run-*-test*
+data/raw/run-*
+!data/raw/run-2026-11-06-train-5000
 data/raw/*.zip
 
 # File log runtime

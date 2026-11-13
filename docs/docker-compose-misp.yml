@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  misp-core:
+    image: coolacid/misp-docker:core-latest
+    container_name: misp_core_server
+    restart: always
+    ports:
+      - "8081:80"
+      - "8443:443"
+    environment:
+      - MYSQL_HOST=misp-db
+      - MYSQL_DATABASE=misp
+      - MYSQL_USER=misp
+      - MYSQL_PASSWORD=misp_secure_pass_2026
+      - MISP_ADMIN_EMAIL=admin@admin.test
+      - MISP_ADMIN_PASSPHRASE=admin
+      - MISP_BASEURL=http://localhost:8081
+    depends_on:
+      - misp-db
+    volumes:
+      - misp_server_data:/var/www/MISP
+
+  misp-db:
+    image: mysql:5.7
+    container_name: misp_db_mysql
+    restart: always
+    environment:
+      - MYSQL_DATABASE=misp
+      - MYSQL_USER=misp
+      - MYSQL_PASSWORD=misp_secure_pass_2026
+      - MYSQL_ROOT_PASSWORD=root_secure_pass_2026
+    volumes:
+      - misp_mysql_data:/var/lib/mysql
+
+volumes:
+  misp_server_data:
+  misp_mysql_data:
