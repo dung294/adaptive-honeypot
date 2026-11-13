@@ -118,6 +118,8 @@ last_read_offset = 0
 
 def analyze_mitre_and_alert(event: Dict[str, Any]) -> Dict[str, Any]:
     """Ánh xạ tự động MITRE ATT&CK và tính mức cảnh báo cho event theo chuẩn MitreMapper."""
+    if event.get("severity") and not event.get("alert_level"):
+        event["alert_level"] = str(event["severity"]).upper()
     if event.get("mitre_matches") and event.get("alert_level"):
         return event
 

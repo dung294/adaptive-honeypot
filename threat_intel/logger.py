@@ -12,9 +12,11 @@ SESSIONS_LOG_FILE = LOGS_DIR / "sessions.json"
 
 class HoneypotLogger:
     """
-    Standard Operational Logger for Adaptive SSH Honeypot.
-    Ghi nhận log sự kiện thô nguyên bản (Raw Event Logs) phục vụ giám sát hoạt động.
-    Gán nhãn đe dọa (Threat Labeling) được tắt theo mặc định (ENABLE_THREAT_LABELING=False).
+    Standard Operational & AI-driven CTI Logger for Adaptive SSH Honeypot.
+    Cơ chế gán nhãn MITRE ATT&CK thời gian thực 1:1:
+    Mỗi khi một log sự kiện (kết nối, xác thực, lệnh thực thi) vừa sinh ra,
+    AI Engine lập tức phân tích và gắn nhãn MITRE ATT&CK (Tactic, Technique ID,
+    Severity, Macro-Class) trực tiếp vào chính bản ghi đó.
     """
     def __init__(self, log_path: Path = EVENT_LOG_FILE, sessions_path: Path = SESSIONS_LOG_FILE):
         self.log_path = log_path
@@ -98,9 +100,11 @@ class HoneypotLogger:
             pass
 
     def log_connection(self, source_ip: str, source_port: int, status: str = "Connected"):
-        """Ghi nhận sự kiện kết nối socket SSH thô nguyên bản."""
+        """Ghi nhận sự kiện kết nối SSH và gán nhãn MITRE thời gian thực 1:1."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         session_id = str(uuid.uuid4())
+
+        mitre_info = MitreMapper.map_connection(status)
 
         event_record = {
             "timestamp": now,
@@ -110,22 +114,30 @@ class HoneypotLogger:
             "protocol": "SSH",
             "event_type": "Connection",
             "event_status": status,
-            "message": f"SSH connection {status}"
+            "message": f"SSH connection {status}",
+            "macro_class": mitre_info["macro_class"],
+            "mitre_framework": mitre_info["framework"],
+            "mitre_tactic": mitre_info["tactic_name"],
+            "mitre_tactic_id": mitre_info["tactic_id"],
+            "mitre_technique_id": mitre_info["technique_id"],
+            "mitre_technique_name": mitre_info["technique_name"],
+            "subtechnique_id": mitre_info["subtechnique_id"],
+            "severity": mitre_info["severity"],
+            "scenario": mitre_info["scenario"],
+            "ai_labeling": {
+                "assigned_by": "Adaptive-AI-Engine",
+                "mode": "REALTIME_1_TO_1",
+                "timestamp": now,
+                "confidence": 1.0
+            },
+            "mitre_matches": [
+                {
+                    "id": mitre_info["technique_id"],
+                    "name": mitre_info["technique_name"],
+                    "tactic": mitre_info["tactic_name"]
+                }
+            ]
         }
-
-        if ENABLE_THREAT_LABELING:
-            mitre_info = MitreMapper.map_connection(status)
-            event_record.update({
-                "macro_class": mitre_info["macro_class"],
-                "mitre_framework": mitre_info["framework"],
-                "mitre_tactic": mitre_info["tactic_name"],
-                "mitre_tactic_id": mitre_info["tactic_id"],
-                "mitre_technique_id": mitre_info["technique_id"],
-                "mitre_technique_name": mitre_info["technique_name"],
-                "subtechnique_id": mitre_info["subtechnique_id"],
-                "severity": mitre_info["severity"],
-                "scenario": mitre_info["scenario"]
-            })
 
         self._write_event(event_record)
 
@@ -147,10 +159,15 @@ class HoneypotLogger:
         session_id: str = None,
         is_admin: bool = False
     ):
-        """Ghi nhận sự kiện xác thực SSH (thô nguyên bản)."""
+        """Ghi nhận sự kiện xác thực SSH và gán nhãn MITRE 1:1 trực tiếp bởi AI."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         if not session_id:
             session_id = str(uuid.uuid4())
+
+        mitre_info = MitreMapper.map_auth(success, username, password)
+
+        safe_user = urllib.parse.quote(username, safe="")
+        safe_pass = urllib.parse.quote(password, safe="")
 
         event_record = {
             "timestamp": now,
@@ -161,25 +178,35 @@ class HoneypotLogger:
             "event_type": "Authentication",
             "username": username,
             "password": password,
+            "encoded_username": safe_user,
+            "encoded_password": safe_pass,
             "auth_success": success,
             "is_admin": is_admin,
             "event_status": "Auth_Success" if success else "Auth_Failed",
-            "message": f"SSH login {'successful' if success else 'failed'} for user '{username}'"
+            "message": f"SSH login {'successful' if success else 'failed'} for user '{username}'",
+            "macro_class": mitre_info["macro_class"],
+            "mitre_framework": mitre_info["framework"],
+            "mitre_tactic": mitre_info["tactic_name"],
+            "mitre_tactic_id": mitre_info["tactic_id"],
+            "mitre_technique_id": mitre_info["technique_id"],
+            "mitre_technique_name": mitre_info["technique_name"],
+            "subtechnique_id": mitre_info["subtechnique_id"],
+            "severity": mitre_info["severity"],
+            "scenario": mitre_info["scenario"],
+            "ai_labeling": {
+                "assigned_by": "Adaptive-AI-Engine",
+                "mode": "REALTIME_1_TO_1",
+                "timestamp": now,
+                "confidence": 1.0
+            },
+            "mitre_matches": [
+                {
+                    "id": mitre_info["technique_id"],
+                    "name": mitre_info["technique_name"],
+                    "tactic": mitre_info["tactic_name"]
+                }
+            ]
         }
-
-        if ENABLE_THREAT_LABELING:
-            mitre_info = MitreMapper.map_auth(success, username, password)
-            event_record.update({
-                "macro_class": mitre_info["macro_class"],
-                "mitre_framework": mitre_info["framework"],
-                "mitre_tactic": mitre_info["tactic_name"],
-                "mitre_tactic_id": mitre_info["tactic_id"],
-                "mitre_technique_id": mitre_info["technique_id"],
-                "mitre_technique_name": mitre_info["technique_name"],
-                "subtechnique_id": mitre_info["subtechnique_id"],
-                "severity": mitre_info["severity"],
-                "scenario": mitre_info["scenario"]
-            })
 
         self._write_event(event_record)
 
@@ -216,9 +243,15 @@ class HoneypotLogger:
         latency_ms: float,
         mitre_matches: Optional[Any] = None
     ):
-        """Ghi nhận lệnh được thực thi và phản hồi của AI Honeypot (thô nguyên bản)."""
+        """
+        Ghi nhận lệnh được thực thi và gán nhãn MITRE ATT&CK thời gian thực 1:1.
+        Vừa sinh ra log thì AI đã hoàn thành gắn nhãn đó ngay lập tức trong sự kiện.
+        """
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         clean_output = command_output.rstrip("\r\n") if command_output else ""
+
+        # Gán nhãn trực tiếp bằng AI MitreMapper 1:1 ngay lúc lệnh được thực thi
+        mitre_info = MitreMapper.map_command(command)
 
         event_record = {
             "timestamp": now,
@@ -232,44 +265,51 @@ class HoneypotLogger:
             "command": command,
             "command_output": clean_output,
             "handler_type": handler_type,
-            "latency_ms": round(latency_ms, 2)
+            "latency_ms": round(latency_ms, 2),
+            "macro_class": mitre_info["macro_class"],
+            "mitre_framework": mitre_info["framework"],
+            "mitre_tactic": mitre_info["tactic_name"],
+            "mitre_tactic_id": mitre_info["tactic_id"],
+            "mitre_technique_id": mitre_info["technique_id"],
+            "mitre_technique_name": mitre_info["technique_name"],
+            "subtechnique_id": mitre_info["subtechnique_id"],
+            "severity": mitre_info["severity"],
+            "scenario": mitre_info["scenario"],
+            "ai_labeling": {
+                "assigned_by": f"Adaptive-AI-{handler_type}",
+                "mode": "REALTIME_1_TO_1",
+                "timestamp": now,
+                "confidence": 1.0
+            },
+            "mitre_matches": [
+                {
+                    "id": mitre_info["technique_id"],
+                    "name": mitre_info["technique_name"],
+                    "tactic": mitre_info["tactic_name"]
+                }
+            ]
         }
 
-        cmd_entry = {
-            "step": 0,
+        self._write_event(event_record)
+
+        # Cập nhật hồ sơ phiên với đầy đủ thông tin nhãn MITRE 1:1 của AI
+        sess = self._get_or_create_session(session_id, source_ip, source_port, username)
+        sess["end_time"] = now
+        sess["command_count"] += 1
+        sess["commands"].append({
+            "step": len(sess["commands"]) + 1,
             "timestamp": now,
             "command": command,
             "output": clean_output,
             "handler_type": handler_type,
-            "latency_ms": round(latency_ms, 2)
-        }
-
-        if ENABLE_THREAT_LABELING:
-            mitre_info = MitreMapper.map_command(command)
-            event_record.update({
-                "macro_class": mitre_info["macro_class"],
-                "mitre_framework": mitre_info["framework"],
-                "mitre_tactic": mitre_info["tactic_name"],
-                "mitre_tactic_id": mitre_info["tactic_id"],
-                "mitre_technique_id": mitre_info["technique_id"],
-                "mitre_technique_name": mitre_info["technique_name"],
-                "subtechnique_id": mitre_info["subtechnique_id"],
-                "severity": mitre_info["severity"],
-                "scenario": mitre_info["scenario"]
-            })
-            cmd_entry.update({
-                "macro_class": mitre_info["macro_class"],
-                "mitre_tactic": mitre_info["tactic_name"],
-                "mitre_technique_id": mitre_info["technique_id"]
-            })
-
-        self._write_event(event_record)
-
-        sess = self._get_or_create_session(session_id, source_ip, source_port, username)
-        sess["end_time"] = now
-        sess["command_count"] += 1
-        cmd_entry["step"] = len(sess["commands"]) + 1
-        sess["commands"].append(cmd_entry)
+            "latency_ms": round(latency_ms, 2),
+            "macro_class": mitre_info["macro_class"],
+            "mitre_tactic": mitre_info["tactic_name"],
+            "mitre_technique_id": mitre_info["technique_id"],
+            "mitre_technique_name": mitre_info["technique_name"],
+            "severity": mitre_info["severity"],
+            "ai_verified": True
+        })
 
         if self.ml_exporter:
             try:
@@ -289,7 +329,7 @@ class HoneypotLogger:
         commands_count: int,
         reason: str = "normal"
     ):
-        """Ghi nhận kết thúc phiên SSH."""
+        """Ghi nhận kết thúc phiên SSH và lưu hồ sơ phiên sạch."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         event_record = {
