@@ -32,9 +32,17 @@ QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Cấu hình SSH Gateway Honeypot
 SSH_HOST = os.getenv("SSH_HOST", "0.0.0.0")
-SSH_PORT = int(os.getenv("SSH_PORT", "22"))
+SSH_PORT = int(os.getenv("SSH_PORT", "2222"))
 SSH_BANNER = os.getenv("SSH_BANNER", "SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.6")
 SERVER_KEY_PATH = BASE_DIR / "server.key"
+
+# Cấu hình Web Decoy Honeypot (Lớp 7 - hứng tấn công RCE / Config Leak)
+WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
+WEB_PORT = int(os.getenv("WEB_PORT", "80"))
+
+# Cấu hình Dashboard SOC
+DASHBOARD_HOST = os.getenv("DASHBOARD_HOST", "0.0.0.0")
+DASHBOARD_PORT = int(os.getenv("DASHBOARD_PORT", "8080"))
 
 # Cấu hình SSH Multiplexer (Admin Passthrough vs Honeypot Sandbox)
 ENABLE_ADMIN_PASSTHROUGH = os.getenv("ENABLE_ADMIN_PASSTHROUGH", "true").lower() in ("true", "1", "yes")
