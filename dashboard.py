@@ -123,6 +123,12 @@ def analyze_mitre_and_alert(event: Dict[str, Any]) -> Dict[str, Any]:
     """Ánh xạ tự động MITRE ATT&CK và tính mức cảnh báo cho event theo chuẩn MitreMapper."""
     if event.get("severity") and not event.get("alert_level"):
         event["alert_level"] = str(event["severity"]).upper()
+    if not event.get("mitre_matches") and event.get("mitre_technique_id"):
+        event["mitre_matches"] = [{
+            "id": event.get("mitre_technique_id"),
+            "name": event.get("mitre_technique_name", ""),
+            "tactic": event.get("mitre_tactic", "Execution")
+        }]
     if event.get("mitre_matches") and event.get("alert_level"):
         return event
 
@@ -180,6 +186,25 @@ def load_events_from_disk():
         print(f"[!] Lỗi đọc file log local: {e}")
 
 
+_last_file_mtime = 0
+
+def sync_local_events_cache():
+    """Tự động kiểm tra mtime của events.jsonl và nạp lại khi có sự kiện mới"""
+    global _last_file_mtime
+    if not LOCAL_EVENTS_FILE.exists():
+        return
+    try:
+        current_mtime = LOCAL_EVENTS_FILE.stat().st_mtime
+        if current_mtime != _last_file_mtime:
+            load_events_from_disk()
+            _last_file_mtime = current_mtime
+    except Exception:
+        pass
+
+# Nạp log ngay khi import module
+load_events_from_disk()
+
+
 def vm_log_sync_worker():
     """Background worker tail log từ máy ảo VMware hoặc máy chủ Honeypot về Dashboard."""
     global events_cache
@@ -231,6 +256,7 @@ def index():
 
 @app.route("/api/stats")
 def get_stats():
+    sync_local_events_cache()
     with cache_lock:
         total = len(events_cache)
         sessions = len(set(e.get("session_id", "") for e in events_cache if e.get("session_id")))
@@ -257,6 +283,7 @@ def get_stats():
 
 @app.route("/api/events")
 def get_events():
+    sync_local_events_cache()
     limit = int(request.args.get("limit", 150))
     search = request.args.get("search", "").lower()
     filter_status = request.args.get("status", "all")
@@ -289,6 +316,7 @@ def get_events():
 
 @app.route("/api/session/<session_id>")
 def get_session(session_id):
+    sync_local_events_cache()
     with cache_lock:
         sess_events = [e for e in events_cache if e.get("session_id") == session_id]
     return jsonify({
