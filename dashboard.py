@@ -21,6 +21,7 @@ import paramiko
 from flask import Flask, jsonify, request, render_template_string
 from threat_intel.mitre_mapper import MitreMapper
 from threat_intel.misp_comparator import misp_comparator
+from threat_intel.csic_logger import CSIC_CSV_FILE, CSIC_JSONL_FILE, CSIC_UNLABELED_JSONL
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -506,6 +507,52 @@ def get_misp_matches():
         except Exception:
             pass
     return jsonify([])
+
+
+@app.route("/api/feed/latest_csic_http")
+def get_latest_csic_http():
+    """Trả về 1 bản ghi HTTP request mới nhất chuẩn schema csic_database.csv cho mô hình AI"""
+    if CSIC_UNLABELED_JSONL.exists():
+        try:
+            with open(CSIC_UNLABELED_JSONL, "r", encoding="utf-8") as f:
+                lines = [l.strip() for l in f if l.strip()]
+                if lines:
+                    return jsonify({"status": "success", "csic_record": json.loads(lines[-1])})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "empty", "message": "Chưa có HTTP request nào"}), 404
+
+
+@app.route("/api/feed/csic_http")
+def get_csic_http_feed():
+    """Trả về danh sách các request HTTP gần đây chuẩn format CSIC 2010"""
+    limit = int(request.args.get("limit", 50))
+    records = []
+    if CSIC_UNLABELED_JSONL.exists():
+        try:
+            with open(CSIC_UNLABELED_JSONL, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        records.append(json.loads(line))
+        except Exception:
+            pass
+    return jsonify(list(reversed(records))[:limit])
+
+
+@app.route("/api/export/csic_csv")
+def export_csic_csv():
+    """Tải về toàn bộ log HTTP dạng file CSV chuẩn hệt file csic_database.csv"""
+    from flask import Response
+    if CSIC_CSV_FILE.exists():
+        with open(CSIC_CSV_FILE, "r", encoding="utf-8") as f:
+            content = f.read()
+        return Response(
+            content,
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment; filename=csic_http_requests.csv"}
+        )
+    return "No CSV generated yet", 404
 
 
 DASHBOARD_HTML_TEMPLATE = """

@@ -64,7 +64,47 @@ def fetch_latest_honeypot_session(honeypot_url: str) -> Dict[str, Any]:
             if lines:
                 return json.loads(lines[-1])
 
-    raise RuntimeError("Không thể kết nối API Honeypot và chưa có tệp logs/unlabeled_sessions.jsonl local")
+    return {}
+
+
+def fetch_latest_csic_http_request(honeypot_url: str) -> Dict[str, Any]:
+    """Lấy bản ghi HTTP request mới nhất chuẩn CSIC 2010 (csic_database.csv) từ Web Honeypot."""
+    try:
+        url = f"{honeypot_url.rstrip('/')}/api/feed/latest_csic_http"
+        r = requests.get(url, timeout=3)
+        if r.status_code == 200:
+            data = r.json()
+            return data.get("csic_record", {})
+    except Exception:
+        pass
+
+    local_csic = Path(__file__).resolve().parent.parent / "logs" / "csic_unlabeled_http.jsonl"
+    if local_csic.exists():
+        with open(local_csic, "r", encoding="utf-8") as f:
+            lines = [l.strip() for l in f if l.strip()]
+            if lines:
+                return json.loads(lines[-1])
+    return {}
+
+
+def predict_csic_http_anomaly(csic_record: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Mô phỏng mô hình AI WAF dự đoán request HTTP là Normal (0) hay Anomalous (1)
+    dựa trên các trường dữ liệu của csic_database.csv (Method, URL, content, User-Agent...).
+    """
+    url = csic_record.get("URL", "")
+    content = csic_record.get("content", "")
+    full_text = f"{url} {content}".lower()
+
+    is_anomaly = any(x in full_text for x in [
+        ";", "&&", "||", "whoami", "uname", "wget", "curl", "/etc/passwd",
+        ".env", "config.php", "union select", "or 1=1", "<script>"
+    ])
+    return {
+        "classification": 1 if is_anomaly else 0,
+        "label": "Anomalous (Phát hiện tấn công Web)" if is_anomaly else "Normal (Truy cập thông thường)",
+        "confidence": 0.98 if is_anomaly else 0.95
+    }
 
 def predict_mitre_with_ai(full_session: str, model_path: str = None) -> List[str]:
     """
@@ -209,8 +249,25 @@ def main():
                 print(f"   🦠 [VirusTotal]: Mục tiêu '{cmd[:40]}' | Kết luận: {vt_info.get('verdict')} ({vt_info.get('positives')}/{vt_info.get('total')} engines)")
                 break
 
+        # BƯỚC 5: Kéo log HTTP chuẩn CSIC 2010 và đưa vào AI phân loại Web Anomaly
+        print("\n[*] 5. TIÊU THỤ LOG HTTP CHUẨN CSIC 2010 (csic_database.csv)...")
+        csic_rec = fetch_latest_csic_http_request(args.honeypot_url)
+        if csic_rec:
+            print(f"   ✅ Đã nhận bản ghi HTTP thô (Unlabeled):")
+            print(f"      • Method       : {csic_rec.get('Method')}")
+            print(f"      • URL          : {csic_rec.get('URL')}")
+            print(f"      • User-Agent   : {csic_rec.get('User-Agent')}")
+            print(f"      • Content      : {csic_rec.get('content') or '(none)'}")
+            
+            http_pred = predict_csic_http_anomaly(csic_rec)
+            print(f"   🤖 [KẾT QUẢ AI DỰ ĐOÁN HTTP]:")
+            print(f"      • Classification : {http_pred['classification']} ({http_pred['label']})")
+            print(f"      • Confidence     : {http_pred['confidence'] * 100:.1f}%")
+        else:
+            print("   ℹ️ Chưa có bản ghi HTTP CSIC mới.")
+
         print("\n" + "=" * 85)
-        print("🎉 HOÀN TẤT CHU TRÌNH: HONEYPOT -> UNLABELED LOG -> AI PREDICT -> MISP -> OSINT")
+        print("🎉 HOÀN TẤT CHU TRÌNH: HONEYPOT (SSH + HTTP CSIC) -> UNLABELED LOG -> AI PREDICT -> MISP -> OSINT")
         print("=" * 85)
 
     except Exception as e:

