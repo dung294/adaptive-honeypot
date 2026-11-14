@@ -8,7 +8,8 @@ services:
     ports:
       # Lớp 7: Cổng Web mồi nhử công khai (Hứng tấn công RCE, File Leak)
       - "80:80"
-      # Lớp 4: Cổng SSH Honeypot (Nơi hacker nhảy vào gõ lệnh sau khi khai thác Web)
+      # Lớp 4: Cổng SSH Honeypot (Cả cổng 22 scan mặc định và cổng 2222 trong config leak)
+      - "22:2222"
       - "2222:2222"
       # SOC Dashboard: Giao diện giám sát & API cấp feed log cho AI Máy 2
       - "8080:8080"
