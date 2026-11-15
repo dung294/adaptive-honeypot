@@ -26,7 +26,7 @@ EXPOSE 80 2222
 ENV PYTHONUNBUFFERED=1
 ENV SSH_PORT=2222
 ENV WEB_PORT=80
-ENV PIPELINE_URL=http://192.168.2.175:8000/api/analyze
+ENV PIPELINE_URL=http://172.18.0.5:8000/api/analyze
 
 # Khởi chạy đồng thời Web Decoy và SSH Honeypot
 CMD ["python", "run_all.py"]

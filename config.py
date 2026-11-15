@@ -41,7 +41,7 @@ WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
 WEB_PORT = int(os.getenv("WEB_PORT", "80"))
 
 # Địa chỉ API tiếp nhận log của Máy 1 (SOC & AI Pipeline)
-PIPELINE_URL = os.getenv("PIPELINE_URL", "http://192.168.2.175:8000/api/analyze")
+PIPELINE_URL = os.getenv("PIPELINE_URL", "http://172.18.0.5:8000/api/analyze")
 
 # Cấu hình SSH Multiplexer (Admin Passthrough vs Honeypot Sandbox)
 ENABLE_ADMIN_PASSTHROUGH = os.getenv("ENABLE_ADMIN_PASSTHROUGH", "true").lower() in ("true", "1", "yes")

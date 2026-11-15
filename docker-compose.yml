@@ -15,7 +15,7 @@ services:
       - SSH_PORT=2222
       - WEB_HOST=0.0.0.0
       - WEB_PORT=80
-      - PIPELINE_URL=http://192.168.2.175:8000/api/analyze
+      - PIPELINE_URL=http://172.18.0.5:8000/api/analyze
       - LLM_PROVIDER=heuristic
     volumes:
       # Mount thư mục log ra ngoài host để phân tích thời gian thực
