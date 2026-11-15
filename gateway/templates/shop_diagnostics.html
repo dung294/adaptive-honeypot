@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="vi" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chẩn Đoán Kết Nối Kho Vận & API Nhà Cung Cấp - TechShop</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .card-custom { background: #161b22; border: 1px solid #30363d; border-radius: 10px; }
+        .terminal-box { background: #010409; border: 1px solid #30363d; border-radius: 8px; font-family: monospace; color: #3fb950; min-height: 200px; padding: 16px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark bg-dark border-bottom border-secondary py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-light" href="/"><i class="bi bi-cpu text-primary me-2"></i>TECHSHOP</a>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-warning-subtle text-warning"><i class="bi bi-wrench-adjustable me-1"></i> Warehouse Diagnostic Tool</span>
+                <a href="/" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Về Cửa Hàng</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5" style="max-width: 800px;">
+        <div class="card card-custom shadow">
+            <div class="card-header bg-dark border-bottom border-secondary py-3">
+                <h5 class="mb-0 text-light fw-bold"><i class="bi bi-hdd-network-fill text-success me-2"></i>Kiểm Tra Kết Nối Mạng Server Kho Vận & Cổng Thanh Toán</h5>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-secondary small">
+                    Công cụ gửi gói tin ICMP Ping để kiểm tra độ trễ mạng và tính sẵn sàng của máy chủ đồng bộ kho hàng nội bộ (Carrier API / Internal Node Connectivity Test).
+                </p>
+
+                <!-- Form chứa lỗ hổng Command Injection (RCE) -->
+                <form method="GET" action="/admin/diagnostics" class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-secondary"><i class="bi bi-globe"></i></span>
+                        <input type="text" class="form-control bg-dark text-light border-secondary" name="host" value="{{ host or '127.0.0.1' }}" placeholder="VD: 127.0.0.1 hoặc warehouse.internal" required>
+                        <button class="btn btn-success px-4 fw-semibold" type="submit">
+                            <i class="bi bi-play-circle me-1"></i> Ping Host
+                        </button>
+                    </div>
+                </form>
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small text-secondary"><i class="bi bi-terminal me-1"></i> Console Output:</span>
+                    <span class="small text-secondary">Diagnostic Gateway • Port 80</span>
+                </div>
+
+                <div class="terminal-box">
+<pre class="m-0"><code>{{ ping_output or 'PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.\n64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.038 ms\n\n--- 127.0.0.1 ping statistics ---\n1 packets transmitted, 1 received, 0% packet loss, time 0ms' }}</code></pre>
+                </div>
+            </div>
+            <div class="card-footer bg-dark border-top border-secondary text-secondary small py-2">
+                <i class="bi bi-shield-check me-1"></i> Máy chủ: Linux 5.15.0-89-generic • Kernel Restricted Exec Policy
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

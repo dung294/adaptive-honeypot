@@ -28,5 +28,8 @@ ENV SSH_PORT=2222
 ENV WEB_PORT=80
 ENV PIPELINE_URL=http://172.18.0.5:8000/api/analyze
 
+# Khởi tạo CSDL Cửa hàng TechShop
+RUN python gateway/shop_db.py
+
 # Khởi chạy đồng thời Web Decoy và SSH Honeypot
 CMD ["python", "run_all.py"]
