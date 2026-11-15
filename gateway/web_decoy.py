@@ -20,7 +20,7 @@ app.secret_key = os.getenv("SECRET_KEY", "techshop-decoy-ecommerce-secret-key-20
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 from forwarder import HoneypotForwarder
-from gateway.shop_db import init_shop_db, DB_PATH
+from gateway.shop_db import init_shop_db, ensure_schema, DB_PATH
 
 forwarder = HoneypotForwarder()
 
@@ -31,10 +31,9 @@ def get_db():
         conn = sqlite3.connect(":memory:")
         return conn
 
-# Khởi tạo CSDL nếu chưa có
+# Đảm bảo CSDL luôn đầy đủ cột mới nhất
 try:
-    if not DB_PATH.exists():
-        init_shop_db()
+    ensure_schema()
 except Exception:
     pass
 
@@ -101,13 +100,23 @@ def simulate_rce_cmd(cmd: str) -> str:
 @app.route("/")
 def index():
     """Trang chủ hiển thị danh mục sản phẩm thời trang Coolmate"""
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, category, price, old_price, description, badge, colors, icon FROM products;")
-    products = cursor.fetchall()
-    cursor.execute("SELECT id, invoice_code, customer_name, total_amount, file_path FROM invoices;")
-    invoices = cursor.fetchall()
-    conn.close()
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, category, price, old_price, description, badge, colors, icon FROM products;")
+        products = cursor.fetchall()
+        cursor.execute("SELECT id, invoice_code, customer_name, total_amount, file_path FROM invoices;")
+        invoices = cursor.fetchall()
+        conn.close()
+    except Exception:
+        init_shop_db()
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, category, price, old_price, description, badge, colors, icon FROM products;")
+        products = cursor.fetchall()
+        cursor.execute("SELECT id, invoice_code, customer_name, total_amount, file_path FROM invoices;")
+        invoices = cursor.fetchall()
+        conn.close()
 
     return render_template("shop_index.html", products=products, invoices=invoices, user=session.get("user"))
 

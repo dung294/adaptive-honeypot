@@ -91,5 +91,18 @@ def init_shop_db():
     conn.close()
     print("[*] Đã khởi tạo CSDL Coolmate Shop thành công.")
 
+def ensure_schema():
+    """Đảm bảo CSDL luôn tồn tại và có đầy đủ cột mới nhất (tự động migration)"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(products);")
+        cols = [r[1] for r in cursor.fetchall()]
+        conn.close()
+        if not cols or "colors" not in cols:
+            init_shop_db()
+    except Exception:
+        init_shop_db()
+
 if __name__ == "__main__":
     init_shop_db()
