@@ -100,7 +100,7 @@ HONEYPOT_ALLOWED_PASSWORDS=123,123456,root,password,admin,ubuntu,toor
 # Cấu hình AI Engine (Gemini qua HHTech API)
 LLM_PROVIDER=custom
 LLM_BASE_URL=https://hhtechapi.net/v1
-LLM_API_KEY=sk-372528de2e1f44d098a5fa7d
+LLM_API_KEY=your_api_key_here
 LLM_MODEL=gemini-3.8-flash
 LLM_TIMEOUT_SECONDS=8.0
 ```

@@ -28,6 +28,12 @@ build_hardcore_pdf.py
 quarantine/*
 !quarantine/.gitkeep
 
+# Dữ liệu huấn luyện thô (Raw Datasets)
+data/raw/*
+!data/raw/.gitkeep
+data/*
+!data/.gitkeep
+
 # Nhật ký sự kiện thời gian thực
 logs/*
 !logs/.gitkeep
