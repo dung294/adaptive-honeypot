@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "web_decoy.db"
 
 # Địa chỉ API tiếp nhận log của Máy 1 (SOC & AI Pipeline)
-PIPELINE_URL = os.getenv("PIPELINE_URL", "http://172.18.0.5:8000/api/analyze")
+PIPELINE_URL = os.getenv("PIPELINE_URL", "http://192.168.2.76:8000/api/analyze")
 
 # Khởi tạo CSDL nếu chưa có
 if not DB_PATH.exists():
@@ -220,6 +220,12 @@ def login():
     try:
         cursor.execute(query)
         user_row = cursor.fetchone()
+
+        # Hỗ trợ bypass SQLi linh hoạt kể cả khi không có comment --
+        if not user_row and is_sqli and any(p in username.lower() for p in ["'1'='1", "1=1", "''='", "or true"]):
+            cursor.execute("SELECT id, username, password, email, role, note FROM users WHERE role='SuperAdmin' LIMIT 1;")
+            user_row = cursor.fetchone()
+
         conn.close()
 
         if user_row:

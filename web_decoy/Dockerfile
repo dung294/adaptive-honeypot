@@ -25,7 +25,7 @@ EXPOSE 80
 # Biến môi trường
 ENV PYTHONUNBUFFERED=1
 ENV PORT=80
-ENV PIPELINE_URL=http://172.18.0.5:8000/api/analyze
+ENV PIPELINE_URL=http://192.168.2.76:8000/api/analyze
 
 # Khởi chạy ứng dụng Flask
 CMD ["python", "app.py"]

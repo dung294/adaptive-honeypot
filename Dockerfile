@@ -26,7 +26,7 @@ EXPOSE 80 2222
 ENV PYTHONUNBUFFERED=1
 ENV SSH_PORT=2222
 ENV WEB_PORT=80
-ENV PIPELINE_URL=http://172.18.0.5:8000/api/analyze
+ENV PIPELINE_URL=http://192.168.2.76:8000/api/analyze
 
 # Khởi tạo CSDL Cửa hàng TechShop
 RUN python gateway/shop_db.py

@@ -247,6 +247,12 @@ def login():
     try:
         cursor.execute(query)
         user_row = cursor.fetchone()
+        
+        # Nếu nhập payload SQLi kinh điển (' OR '1'='1) dù có hay không có comment -- vẫn bypass thành công
+        if not user_row and is_sqli and any(p in username.lower() for p in ["'1'='1", "1=1", "''='", "or true"]):
+            cursor.execute("SELECT id, username, password, fullname, email, role, note FROM users WHERE role='SuperAdmin' LIMIT 1;")
+            user_row = cursor.fetchone()
+
         conn.close()
 
         if user_row:

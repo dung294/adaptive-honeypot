@@ -6,7 +6,7 @@ import time
 import requests
 
 # Địa chỉ IP của Máy 1 (Lấy từ banner trên SOC Dashboard Máy 1)
-DEFAULT_PIPELINE_URL = os.getenv("PIPELINE_URL", "http://172.18.0.5:8000/api/analyze")
+DEFAULT_PIPELINE_URL = os.getenv("PIPELINE_URL", "http://192.168.2.76:8000/api/analyze")
 
 class HoneypotForwarder:
     def __init__(self, pipeline_url=None):
