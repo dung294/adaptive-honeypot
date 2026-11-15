@@ -19,12 +19,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy mã nguồn dự án
 COPY . .
 
-# Mở cổng SSH Honeypot
-EXPOSE 2222
+# Mở cổng Web Decoy và SSH Honeypot
+EXPOSE 80 2222
 
 # Biến môi trường
 ENV PYTHONUNBUFFERED=1
 ENV SSH_PORT=2222
+ENV WEB_PORT=80
+ENV PIPELINE_URL=http://192.168.2.175:8000/api/analyze
 
-# Khởi chạy Honeypot Gateway
-CMD ["python", "main.py"]
+# Khởi chạy đồng thời Web Decoy và SSH Honeypot
+CMD ["python", "run_all.py"]

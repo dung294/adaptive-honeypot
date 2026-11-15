@@ -32,9 +32,16 @@ QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Cấu hình SSH Gateway Honeypot
 SSH_HOST = os.getenv("SSH_HOST", "0.0.0.0")
-SSH_PORT = int(os.getenv("SSH_PORT", "22"))
+SSH_PORT = int(os.getenv("SSH_PORT", "2222"))
 SSH_BANNER = os.getenv("SSH_BANNER", "SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.6")
 SERVER_KEY_PATH = BASE_DIR / "server.key"
+
+# Cấu hình Web Decoy Honeypot (Port 80)
+WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
+WEB_PORT = int(os.getenv("WEB_PORT", "80"))
+
+# Địa chỉ API tiếp nhận log của Máy 1 (SOC & AI Pipeline)
+PIPELINE_URL = os.getenv("PIPELINE_URL", "http://192.168.2.175:8000/api/analyze")
 
 # Cấu hình SSH Multiplexer (Admin Passthrough vs Honeypot Sandbox)
 ENABLE_ADMIN_PASSTHROUGH = os.getenv("ENABLE_ADMIN_PASSTHROUGH", "true").lower() in ("true", "1", "yes")

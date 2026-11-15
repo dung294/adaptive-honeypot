@@ -10,6 +10,12 @@ from typing import Dict, Any, List, Optional
 from config import EVENT_LOG_FILE, LOGS_DIR, LOG_FORWARD_ENABLED, LOG_FORWARD_URL
 from threat_intel.ml_exporter import MLLogExporter
 
+try:
+    from forwarder import HoneypotForwarder
+    forwarder = HoneypotForwarder()
+except Exception:
+    forwarder = None
+
 SESSIONS_LOG_FILE = LOGS_DIR / "sessions.json"
 
 class HoneypotLogger:
@@ -132,6 +138,21 @@ class HoneypotLogger:
                 json.dump(sessions_list, f, ensure_ascii=False, indent=2)
         except Exception:
             pass
+
+        # Bắn log SSH Honeypot (Commands, Session) sang Máy 1
+        if forwarder:
+            try:
+                commands_list = [c["command"] for c in sess_data.get("commands", []) if isinstance(c, dict) and "command" in c]
+                if not commands_list:
+                    commands_list = [str(c) for c in sess_data.get("commands", [])]
+                if commands_list:
+                    forwarder.send_ssh_attack(
+                        attacker_ip=sess_data.get("source_ip", "127.0.0.1"),
+                        commands=commands_list,
+                        username=sess_data.get("username", "root")
+                    )
+            except Exception as e:
+                print(f"[!] Forward SSH log lỗi: {e}")
 
     def log_connection(self, source_ip: str, source_port: int, status: str = "Connected"):
         """Ghi nhận sự kiện kết nối socket SSH thông thường."""
