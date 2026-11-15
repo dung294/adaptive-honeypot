@@ -100,10 +100,10 @@ def simulate_rce_cmd(cmd: str) -> str:
 
 @app.route("/")
 def index():
-    """Trang chủ hiển thị danh mục sản phẩm công nghệ TechShop"""
+    """Trang chủ hiển thị danh mục sản phẩm thời trang Coolmate"""
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, category, price, old_price, description, badge, icon FROM products;")
+    cursor.execute("SELECT id, name, category, price, old_price, description, badge, colors, icon FROM products;")
     products = cursor.fetchall()
     cursor.execute("SELECT id, invoice_code, customer_name, total_amount, file_path FROM invoices;")
     invoices = cursor.fetchall()
@@ -131,7 +131,7 @@ def search():
     cursor = conn.cursor()
     
     # Câu truy vấn CỐ TÌNH NỐI CHUỖI KHÔNG AN TOÀN (Vulnerable to SQLi)
-    query = f"SELECT id, name, category, price, old_price, description, badge, icon FROM products WHERE name LIKE '%{q}%'"
+    query = f"SELECT id, name, category, price, old_price, description, badge, colors, icon FROM products WHERE name LIKE '%{q}%'"
     
     sqli_exposed = False
     try:
@@ -178,7 +178,7 @@ def view_invoice():
 
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, category, price, old_price, description, badge, icon FROM products;")
+    cursor.execute("SELECT id, name, category, price, old_price, description, badge, colors, icon FROM products;")
     products = cursor.fetchall()
     cursor.execute("SELECT id, invoice_code, customer_name, total_amount, file_path FROM invoices;")
     invoices = cursor.fetchall()

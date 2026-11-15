@@ -1,50 +1,57 @@
 <!DOCTYPE html>
-<html lang="vi" data-bs-theme="dark">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bảng Quản Trị Hệ Thống - TechShop</title>
+    <title>Bảng Quản Trị Hệ Thống - Coolmate Operations</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', system-ui, sans-serif; }
-        .card-custom { background: #161b22; border: 1px solid #30363d; border-radius: 10px; }
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .navbar-admin { background-color: #151821; color: #ffffff; padding: 14px 0; }
+        .brand-logo { font-size: 20px; font-weight: 900; color: #ffffff; text-decoration: none; }
+        .brand-logo span { color: #2f5acf; }
+        .card-custom { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-dark bg-dark border-bottom border-secondary py-3">
-        <div class="container">
-            <span class="navbar-brand fw-bold"><i class="bi bi-shield-lock-fill text-warning me-2"></i>TECHSHOP ADMIN PANEL</span>
+    <nav class="navbar-admin">
+        <div class="container d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                <span class="text-light">Xin chào, <strong>{{ user.fullname }}</strong> ({{ user.role }})</span>
-                <a href="/admin/diagnostics" class="btn btn-outline-warning btn-sm"><i class="bi bi-terminal me-1"></i> Kiểm tra kho vận (API)</a>
-                <a href="/logout" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right"></i> Đăng xuất</a>
+                <a class="brand-logo" href="/">COOLMATE<span>.OPERATIONS</span></a>
+                <span class="badge bg-primary">Internal ERP v4.2</span>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="small text-light">Xin chào, <strong>{{ user.fullname }}</strong> ({{ user.role }})</span>
+                <a href="/admin/diagnostics" class="btn btn-warning btn-sm rounded-pill"><i class="bi bi-hdd-network-fill me-1"></i> Kho Vận (API)</a>
+                <a href="/logout" class="btn btn-outline-light btn-sm rounded-pill"><i class="bi bi-box-arrow-right"></i> Đăng xuất</a>
             </div>
         </div>
     </nav>
 
     <div class="container my-5">
         
-        <div class="alert alert-info border-info d-flex align-items-center gap-3 mb-4">
-            <i class="bi bi-info-circle-fill fs-2"></i>
+        <div class="alert alert-success border-success d-flex align-items-center gap-3 mb-4 card-custom">
+            <i class="bi bi-check-circle-fill fs-2 text-success"></i>
             <div>
-                <h6 class="mb-1 text-light fw-bold">Phiên quản trị hệ thống đã xác thực thành công!</h6>
-                <div class="small text-secondary">Tài khoản: <code>{{ user.username }}</code> | Email: <code>{{ user.email }}</code> | Ghi chú bảo mật: <code>{{ user.note }}</code></div>
+                <h6 class="mb-1 fw-bold text-dark">Xác thực thành công phiên quản trị viên Coolmate!</h6>
+                <div class="small text-secondary">Tài khoản: <code>{{ user.username }}</code> | Email: <code>{{ user.email }}</code> | Ghi chú tài khoản: <code>{{ user.note }}</code></div>
             </div>
         </div>
 
-        <!-- Bảng Users bị lộ thông tin mật khẩu SSH -->
-        <div class="card card-custom mb-4 shadow">
-            <div class="card-header bg-dark border-bottom border-secondary d-flex justify-content-between align-items-center py-3">
-                <span class="fw-bold text-light"><i class="bi bi-people-fill text-primary me-2"></i>Danh Sách Tài Khoản Quản Trị Hệ Thống & Hạ Tầng Máy Chủ</span>
-                <span class="badge bg-danger">CONFIDENTIAL DATA</span>
+        <!-- Bảng danh sách User (Lộ mật khẩu SSH bẫy) -->
+        <div class="card card-custom mb-4 overflow-hidden">
+            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-dark"><i class="bi bi-people-fill text-primary me-2"></i>Danh Sách Tài Khoản Quản Trị Hạ Tầng & Hệ Thống Kho Hàng</span>
+                <span class="badge bg-danger">CONFIDENTIAL ACCESS</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-dark table-hover mb-0">
-                        <thead>
-                            <tr class="text-secondary small">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr class="small text-secondary">
                                 <th>ID</th>
                                 <th>TÀI KHOẢN</th>
                                 <th>MẬT KHẨU (PLAINTEXT)</th>
@@ -59,11 +66,11 @@
                             <tr>
                                 <td>{{ u[0] }}</td>
                                 <td class="fw-bold text-primary">{{ u[1] }}</td>
-                                <td><code class="text-warning bg-black px-2 py-1 rounded">{{ u[2] }}</code></td>
+                                <td><code class="text-danger bg-light px-2 py-1 rounded fw-bold border">{{ u[2] }}</code></td>
                                 <td>{{ u[3] }}</td>
-                                <td class="text-secondary small">{{ u[4] }}</td>
+                                <td class="small text-secondary">{{ u[4] }}</td>
                                 <td><span class="badge bg-secondary">{{ u[5] }}</span></td>
-                                <td class="small text-info"><i class="bi bi-key-fill text-warning me-1"></i>{{ u[6] }}</td>
+                                <td class="small text-dark"><i class="bi bi-key-fill text-warning me-1"></i>{{ u[6] }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -73,7 +80,7 @@
         </div>
 
         <div class="text-center mt-4">
-            <a href="/" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Quay lại Cửa hàng chính</a>
+            <a href="/" class="btn btn-outline-secondary btn-sm rounded-pill px-4"><i class="bi bi-arrow-left me-1"></i> Quay lại Cửa hàng Coolmate</a>
         </div>
     </div>
 
