@@ -78,3 +78,8 @@ LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "8.0"))
 
 # Đường dẫn lưu log sự kiện CTI (JSON Lines)
 EVENT_LOG_FILE = LOGS_DIR / "events.jsonl"
+
+# Cấu hình chuyển tiếp Log thời gian thực sang Máy 2 (DATN-AI API Port 8000)
+LOG_FORWARD_ENABLED = os.getenv("LOG_FORWARD_ENABLED", "true").lower() in ("true", "1", "yes")
+LOG_FORWARD_URL = os.getenv("LOG_FORWARD_URL", "http://127.0.0.1:8000/api/logs")
+

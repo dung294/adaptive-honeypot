@@ -2,9 +2,12 @@ import json
 import uuid
 import datetime
 import urllib.parse
+import queue
+import threading
+import requests
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from config import EVENT_LOG_FILE, LOGS_DIR
+from config import EVENT_LOG_FILE, LOGS_DIR, LOG_FORWARD_ENABLED, LOG_FORWARD_URL
 from threat_intel.ml_exporter import MLLogExporter
 
 SESSIONS_LOG_FILE = LOGS_DIR / "sessions.json"
@@ -14,6 +17,7 @@ class HoneypotLogger:
     Standard Operational Logger for Adaptive SSH Honeypot.
     Ghi nhận log sự kiện thô nguyên bản (Raw Event Logs) phục vụ giám sát hoạt động,
     hoàn toàn không gán nhãn MITRE hay gán nhãn bài toán Học máy (Unlabeled Logs).
+    Tích hợp bộ chuyển tiếp bất đồng bộ (Asynchronous Log Forwarder) bắn log thời gian thực sang Máy 2 (Port 8000).
     """
     def __init__(self, log_path: Path = EVENT_LOG_FILE, sessions_path: Path = SESSIONS_LOG_FILE):
         self.log_path = log_path
@@ -24,12 +28,45 @@ class HoneypotLogger:
         except Exception:
             self.ml_exporter = None
 
+        # Khởi tạo hàng đợi ngầm chuyển tiếp log sang Máy 2
+        self.log_forward_enabled = LOG_FORWARD_ENABLED
+        self.log_forward_url = LOG_FORWARD_URL
+        self.forward_queue: Optional[queue.Queue] = None
+        if self.log_forward_enabled and self.log_forward_url:
+            self.forward_queue = queue.Queue(maxsize=10000)
+            self.forward_thread = threading.Thread(target=self._log_forwarder_worker, daemon=True)
+            self.forward_thread.start()
+
+    def _log_forwarder_worker(self):
+        """Worker thread ngầm bắn log sang API tiếp nhận của Máy 2 (Port 8000)."""
+        while True:
+            try:
+                record = self.forward_queue.get()
+                if record is None:
+                    break
+                try:
+                    requests.post(self.log_forward_url, json=record, timeout=3.0)
+                except Exception:
+                    # Rớt mạng hoặc Máy 2 chưa bật thì bỏ qua an toàn, không làm treo hệ thống
+                    pass
+                finally:
+                    self.forward_queue.task_done()
+            except Exception:
+                pass
+
     def _write_event(self, event_record: Dict[str, Any]):
         try:
             with open(self.log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(event_record, ensure_ascii=False) + "\n")
         except Exception:
             pass
+
+        # Đẩy sự kiện vào hàng đợi ngầm để bắn sang Máy 2
+        if self.log_forward_enabled and self.forward_queue:
+            try:
+                self.forward_queue.put_nowait(event_record)
+            except Exception:
+                pass
 
     def _get_or_create_session(self, session_id: str, source_ip: str, source_port: int, username: str = "") -> Dict[str, Any]:
         if session_id not in self.active_sessions:
@@ -173,41 +210,6 @@ class HoneypotLogger:
 
         return event_record
 
-    def log_auth_attempt(self, source_ip: str, source_port: int, username: str, password: str) -> Dict[str, Any]:
-        """Ghi nhận nỗ lực dò quét mật khẩu (Credential Harvesting / Brute-force)."""
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        event_key = f"{now}:{source_ip}:{source_port}:Auth"
-        
-        # URL-encoding an toàn theo phương pháp của Uphill Security
-        safe_user = urllib.parse.quote(username, safe="")
-        safe_pass = urllib.parse.quote(password, safe="")
-
-        record = {
-            "event_key": event_key,
-            "timestamp": now,
-            "source_ip": source_ip,
-            "source_port": source_port,
-            "protocol": "SSH",
-            "event_status": "Auth_Attempt",
-            "message": "SSH Authentication Attempt",
-            "username": username,
-            "password": password,
-            "encoded_username": safe_user,
-            "encoded_password": safe_pass,
-            "handler_type": "PRE_AUTH_TRAP",
-            "mitre_techniques": [
-                {
-                    "technique_id": "T1110.001",
-                    "technique_name": "Password Guessing",
-                    "tactic": "Credential Access"
-                }
-            ],
-            "ingested_at": now
-        }
-
-        with open(self.log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
-        return record
 
     def log_interaction(
         self,
