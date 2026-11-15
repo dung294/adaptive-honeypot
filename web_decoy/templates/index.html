@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="vi" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internal Network Diagnostics & Enterprise Gateway</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .navbar-custom { background: #161b22; border-bottom: 1px solid #30363d; }
+        .card-custom { background: #161b22; border: 1px solid #30363d; border-radius: 10px; }
+        .terminal-box { background: #010409; border: 1px solid #30363d; border-radius: 8px; font-family: 'Courier New', Courier, monospace; color: #3fb950; min-height: 180px; padding: 16px; overflow-x: auto; }
+        .badge-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-custom py-3">
+        <div class="container">
+            <a class="navbar-brand text-light fw-bold d-flex align-items-center gap-2" href="/">
+                <i class="bi bi-shield-shaded text-primary fs-4"></i>
+                <span>CORP GATEWAY <span class="badge bg-secondary fs-6">v3.4-PROD</span></span>
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-success-subtle text-success border border-success-subtle badge-pulse">
+                    <i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i> DMZ Sensor Active
+                </span>
+                <span class="text-secondary small">Node: edge-gw-01</span>
+                {% if user %}
+                    <span class="badge bg-primary text-light px-3 py-2"><i class="bi bi-person-circle me-1"></i> {{ user.username }} ({{ user.role }})</span>
+                    <a href="/logout" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right"></i> Đăng xuất</a>
+                {% else %}
+                    <a href="/login" class="btn btn-outline-primary btn-sm"><i class="bi bi-box-arrow-in-right me-1"></i> Nhân viên đăng nhập</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container my-5">
+        
+        <!-- Thông báo trạng thái người dùng nếu đã đăng nhập -->
+        {% if user %}
+        <div class="alert alert-info border-info d-flex align-items-center gap-3 mb-4 card-custom">
+            <i class="bi bi-person-badge fs-2 text-info"></i>
+            <div class="flex-grow-1">
+                <h5 class="mb-1 text-light">Xin chào, {{ user.username }}!</h5>
+                <p class="mb-0 small text-secondary">Bạn đang đăng nhập với quyền: <strong>{{ user.role }}</strong> | Ghi chú tài khoản: <code>{{ user.note }}</code></p>
+            </div>
+        </div>
+
+        <!-- Bảng danh sách User (nếu hacker bypass login hoặc đăng nhập thành công) -->
+        <div class="card card-custom mb-5 shadow-sm">
+            <div class="card-header bg-dark border-bottom border-secondary d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-light"><i class="bi bi-people-fill text-warning me-2"></i> Danh Sách Tài Khoản Quản Trị Hệ Thống (Sensitive Roster)</span>
+                <span class="badge bg-danger">CONFIDENTIAL</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0">
+                        <thead>
+                            <tr class="text-secondary small">
+                                <th>ID</th>
+                                <th>TÀI KHOẢN</th>
+                                <th>MẬT KHẨU (PLAINTEXT)</th>
+                                <th>EMAIL</th>
+                                <th>VAI TRÒ</th>
+                                <th>GHI CHÚ HỆ THỐNG (SSH PIVOT)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users_list %}
+                            <tr>
+                                <td>{{ u[0] }}</td>
+                                <td class="fw-bold text-primary">{{ u[1] }}</td>
+                                <td><code class="text-warning bg-black px-2 py-1 rounded">{{ u[2] }}</code></td>
+                                <td class="text-secondary small">{{ u[3] }}</td>
+                                <td><span class="badge bg-secondary">{{ u[4] }}</span></td>
+                                <td class="small text-info"><i class="bi bi-key-fill text-warning me-1"></i>{{ u[5] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row g-4">
+            
+            <!-- MODULE 1: NETWORK DIAGNOSTICS (LỖ HỔNG COMMAND INJECTION / RCE) -->
+            <div class="col-lg-7">
+                <div class="card card-custom h-100 shadow-sm">
+                    <div class="card-header border-bottom border-secondary py-3 d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-light"><i class="bi bi-terminal-fill text-success me-2"></i> Công Cụ Kiểm Tra Độ Trễ & Định Tuyến (Ping Diagnostics)</span>
+                        <span class="badge bg-success-subtle text-success">ICMP Tool</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-secondary small">
+                            Nhập địa chỉ IP hoặc tên miền máy chủ nội bộ để thực hiện gửi gói tin kiểm tra kết nối mạng (Network Connectivity Test).
+                        </p>
+                        
+                        <form method="GET" action="/api/ping" id="pingForm" class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-secondary"><i class="bi bi-globe"></i></span>
+                                <input type="text" class="form-control bg-dark text-light border-secondary" name="host" id="hostInput" value="{{ host or '127.0.0.1' }}" placeholder="VD: 127.0.0.1 hoặc gateway.local" required>
+                                <button class="btn btn-success px-4 fw-semibold" type="submit" id="btnSubmit">
+                                    <i class="bi bi-play-circle me-1"></i> Ping Host
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small text-secondary"><i class="bi bi-laptop me-1"></i> Output Console (stdout):</span>
+                            <span class="small text-secondary">TTL: 64 | Packet Size: 56(84) bytes</span>
+                        </div>
+
+                        <div class="terminal-box" id="terminalOutput">
+<pre class="m-0"><code>{{ ping_output or 'PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.\n64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.038 ms\n\n--- 127.0.0.1 ping statistics ---\n1 packets transmitted, 1 received, 0% packet loss, time 0ms' }}</code></pre>
+                        </div>
+                    </div>
+                    <div class="card-footer border-top border-secondary text-secondary small py-2 bg-dark">
+                        <i class="bi bi-info-circle me-1"></i> Server: Linux 5.15.0-89-generic • Security Policy: Restricted Exec
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODULE 2: SYSTEM DOCUMENTS (LỖ HỔNG PATH TRAVERSAL / LFI) -->
+            <div class="col-lg-5">
+                <div class="card card-custom h-100 shadow-sm">
+                    <div class="card-header border-bottom border-secondary py-3 d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-light"><i class="bi bi-folder-fill text-warning me-2"></i> Tài Liệu Kỹ Thuật (Knowledge Base)</span>
+                        <span class="badge bg-warning-subtle text-warning">Docs Repository</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-secondary small">
+                            Danh sách quy trình vận hành và tài liệu hướng dẫn cấu hình hạ tầng mạng nội bộ:
+                        </p>
+
+                        <div class="list-group list-group-flush border border-secondary rounded overflow-hidden mb-3">
+                            {% for doc in documents %}
+                            <a href="/view?file={{ doc[1] }}" class="list-group-item list-group-item-action bg-dark text-light border-secondary d-flex justify-content-between align-items-center py-3">
+                                <div>
+                                    <div class="fw-semibold text-primary"><i class="bi bi-file-earmark-text text-info me-2"></i>{{ doc[2] }}</div>
+                                    <div class="text-secondary small mt-1">{{ doc[3] }}</div>
+                                    <code class="small text-secondary">{{ doc[1] }}</code>
+                                </div>
+                                <i class="bi bi-chevron-right text-secondary"></i>
+                            </a>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Khung hiển thị nội dung tài liệu đọc được -->
+                        {% if file_content %}
+                        <div class="mt-3">
+                            <span class="small text-secondary"><i class="bi bi-eye-fill me-1"></i> Đang xem tệp: <code>{{ current_file }}</code></span>
+                            <div class="terminal-box mt-2" style="color: #58a6ff; max-height: 200px;">
+<pre class="m-0"><code>{{ file_content }}</code></pre>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer border-top border-secondary text-secondary small py-2 bg-dark">
+                        <i class="bi bi-shield-lock me-1"></i> CACS File Viewer Module • Chế độ xem: Read-Only
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <footer class="text-center py-4 border-top border-secondary text-secondary small bg-dark mt-5">
+        <div>© 2026 Enterprise Security Operations • Node 2 Honeypot Sensor (Decoy Gateway)</div>
+        <div class="mt-1">Tích hợp AI Analysis Pipeline & CTI Sharing Framework</div>
+    </footer>
+
+</body>
+</html>

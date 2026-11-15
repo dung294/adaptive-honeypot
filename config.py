@@ -62,7 +62,7 @@ ADMIN_ALLOWED_PASSWORDS = [p.strip() for p in os.getenv("ADMIN_ALLOWED_PASSWORDS
 HONEYPOT_ALLOWED_PASSWORDS = [
     p.strip() for p in os.getenv(
         "HONEYPOT_ALLOWED_PASSWORDS",
-        "123,123456,root,password,admin,ubuntu,toor,supersecretpassword123"
+        "123,123456,root,password,admin,ubuntu,toor,supersecretpassword123,P@ssw0rd2026!"
     ).split(",") if p.strip()
 ]
 

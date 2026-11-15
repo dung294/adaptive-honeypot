@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  web_decoy:
+    build: .
+    container_name: web_decoy_gateway
+    restart: always
+    ports:
+      # Mở cổng 80 cho dịch vụ Web bẫy
+      - "80:80"
+    environment:
+      # Địa chỉ IP của Máy 1 (SOC & AI Pipeline Receiver)
+      - PIPELINE_URL=http://172.18.0.5:8000/api/analyze
+      - PORT=80
+      - SECRET_KEY=enterprise-decoy-session-key-2026
+    volumes:
+      # Mount file CSDL để lưu trữ trạng thái người dùng
+      - ./web_decoy.db:/app/web_decoy.db
