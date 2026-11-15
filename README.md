@@ -105,26 +105,32 @@ LLM_MODEL=gemini-3.8-flash
 LLM_TIMEOUT_SECONDS=8.0
 ```
 
-### Bước 3: Khởi động Honeypot Gateway
+### Bước 3: Khởi động Hệ thống (Docker hoặc Python)
 
-* **Cách 1: Khởi động trực tiếp (xem trực tiếp log trên màn hình terminal):**
+* **Cách 1: Khởi động bằng Docker Compose (Khuyên dùng - Chạy chung Web Decoy & SSH Honeypot):**
   ```bash
-  python3 main.py
+  sudo docker compose up -d --build
+  ```
+  *Xem log hoạt động:*
+  ```bash
+  sudo docker logs -f adaptive_honeypot_gateway
   ```
 
-* **Cách 2: Chạy ngầm dạng Daemon (chạy liên tục kể cả khi đóng SSH / tắt terminal):**
+* **Cách 2: Khởi động trực tiếp bằng Python:**
   ```bash
-  nohup python3 main.py </dev/null >honeypot.log 2>&1 &
+  sudo python3 run_all.py
   ```
 
 * **Kiểm tra trạng thái dịch vụ:**
   ```bash
-  ss -tulpn | grep 2222
+  sudo ss -tulpn | grep -E '80|2222'
   ```
 
-* **Dừng Honeypot Gateway khi cần:**
+* **Dừng Honeypot:**
   ```bash
-  pkill -f main.py
+  sudo docker compose down
+  # hoặc nếu chạy bằng python:
+  # pkill -f run_all.py
   ```
 
 ---
