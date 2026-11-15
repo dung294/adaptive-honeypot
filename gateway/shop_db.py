@@ -13,9 +13,14 @@ def init_shop_db():
         return
     cursor = conn.cursor()
 
+    # Tái tạo schema mới nhất (tránh lỗi mismatch schema cũ)
+    cursor.execute("DROP TABLE IF EXISTS users;")
+    cursor.execute("DROP TABLE IF EXISTS products;")
+    cursor.execute("DROP TABLE IF EXISTS invoices;")
+
     # Bảng người dùng & quản trị (Mục tiêu của SQL Injection)
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
@@ -28,7 +33,7 @@ def init_shop_db():
 
     # Bảng sản phẩm thời trang Coolmate
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS products (
+    CREATE TABLE products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         category TEXT NOT NULL,
@@ -43,7 +48,7 @@ def init_shop_db():
 
     # Bảng hóa đơn điện tử VAT (Mục tiêu của Path Traversal / LFI)
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS invoices (
+    CREATE TABLE invoices (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         invoice_code TEXT NOT NULL,
         customer_name TEXT NOT NULL,
@@ -51,11 +56,6 @@ def init_shop_db():
         file_path TEXT NOT NULL
     );
     """)
-
-    # Xóa dữ liệu cũ để nạp mới
-    cursor.execute("DELETE FROM users;")
-    cursor.execute("DELETE FROM products;")
-    cursor.execute("DELETE FROM invoices;")
 
     # Tài khoản bẫy: Hacker khai thác SQLi sẽ dump được mật khẩu SSH 'P@ssw0rd2026!'
     users_data = [
